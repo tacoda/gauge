@@ -33,6 +33,23 @@ assert:
   expect(spec.config.assert).toEqual([{ regex: "^(a|b)$" }]);
 });
 
+test("parses cases array for matrix specs", () => {
+  const raw = `---
+provider: openai/gpt-4o
+cases:
+  - name: a
+    vars: { x: 1 }
+  - vars: { x: 2 }
+    assert:
+      - contains: "2"
+---
+value {{x}}`;
+  const spec = parseSpec("x.eval.md", raw);
+  expect(spec.config.cases?.length).toBe(2);
+  expect(spec.config.cases?.[0]?.name).toBe("a");
+  expect(spec.config.cases?.[1]?.assert).toEqual([{ contains: "2" }]);
+});
+
 test("throws on missing frontmatter", () => {
   expect(() => parseSpec("x.eval.md", "no frontmatter here")).toThrow(SpecError);
 });

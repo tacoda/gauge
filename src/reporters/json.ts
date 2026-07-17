@@ -4,6 +4,7 @@ import type { CaseResult } from "../core/runner.ts";
 export function reportJson(results: CaseResult[]): boolean {
   const cases = results.map((r) => ({
     path: r.spec.path,
+    name: r.name,
     pass: r.pass,
     output: r.output,
     latencyMs: r.latencyMs,

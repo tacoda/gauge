@@ -59,16 +59,55 @@ Keys come from the environment: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`.
 
 Judge model defaults to `openai/gpt-4o-mini`; override with `GAUGE_JUDGE`.
 
-## Reporters
+## Matrix (multiple cases per file)
 
-`gauge run --reporter tty` (default) or `--reporter json` (CI/dashboards).
-Exit code is non-zero if any eval fails.
+Spec-level `vars`/`assert` are shared; each case merges its own `vars` over them
+and appends its own `assert`.
+
+```markdown
+---
+provider: openai/gpt-4o-mini
+assert:
+  - regex: "/^(auth|billing|other)$/"   # applies to every case
+cases:
+  - name: password-reset
+    vars: { input: "I forgot my password" }
+    assert: [{ equals: "auth" }]
+  - name: refund
+    vars: { input: "I want a refund" }
+    assert: [{ equals: "billing" }]
+---
+Classify: {{input}}
+```
+
+## Reporters & CLI
+
+```bash
+gauge run [paths...] [-r tty|json|junit] [-f <substring>]
+gauge watch [paths...]          # re-run on change
+```
+
+`tty` (default) · `json` (dashboards) · `junit` (CI). Exit code is non-zero if
+any eval fails. `--filter` keeps only specs whose path matches the substring.
+
+## Config & secrets
+
+Optional `gauge.config.yaml` in the working dir sets defaults (CLI flags win):
+
+```yaml
+paths: [evals]
+reporter: tty
+judge: openai/gpt-4o-mini
+filter: ""
+```
+
+A `.env` file in the working dir is loaded automatically (API keys, `GAUGE_JUDGE`).
 
 ## Status
 
-Beta (`0.2.0`). Working: OpenAI/Anthropic/exec providers, equals/contains/regex/llm-judge
-scorers, tty + json reporters. See the roadmap for the path to 1.0
-(matrix vars, watch, config file, snapshot regression).
+Beta (`0.3.0`). Working: OpenAI/Anthropic/exec providers; equals/contains/regex/llm-judge
+scorers; tty/json/junit reporters; matrix cases; watch; config file. Roadmap to 1.0:
+snapshot regression, scores + thresholds, stable plugin API, caching.
 
 ## Development
 

@@ -13,7 +13,8 @@ const color = process.stdout.isTTY
 /** Print per-spec results to the terminal. Returns true if all passed. */
 export function reportTty(results: CaseResult[], cwd = process.cwd()): boolean {
   for (const r of results) {
-    const name = relative(cwd, r.spec.path);
+    const rel = relative(cwd, r.spec.path);
+    const name = r.name ? `${rel} › ${r.name}` : rel;
     if (r.error) {
       console.log(`${color(RED, "✗")} ${name} ${color(DIM, `— ${r.error}`)}`);
       continue;

@@ -1,16 +1,24 @@
-import { readdir } from "node:fs/promises";
-import { join } from "node:path";
+import { readdir, stat } from "node:fs/promises";
+import { isAbsolute, join } from "node:path";
 
 const EXTS = [".eval.md", ".eval.yaml", ".eval.yml"];
 const SKIP = new Set(["node_modules", "dist", ".git"]);
 
-/** Find eval spec files under `root`, or resolve explicit paths as given. */
+/**
+ * Find eval spec files. With no paths, walk `root`. With paths, expand any
+ * directories among them and pass files through as given.
+ */
 export async function discover(root: string, paths: string[]): Promise<string[]> {
-  if (paths.length > 0) {
-    return paths;
-  }
+  const roots = paths.length > 0 ? paths.map((p) => (isAbsolute(p) ? p : join(root, p))) : [root];
   const found: string[] = [];
-  await walk(root, found);
+  for (const path of roots) {
+    const info = await stat(path).catch(() => null);
+    if (info?.isDirectory()) {
+      await walk(path, found);
+    } else if (info?.isFile()) {
+      found.push(path);
+    }
+  }
   return found.sort();
 }
 

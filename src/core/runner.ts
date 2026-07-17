@@ -1,10 +1,12 @@
 import { type Resolver, resolveProvider } from "../providers/index.ts";
 import { type ScoreContext, type ScoreResult, score } from "../scorers/index.ts";
-import type { Spec } from "./spec.ts";
+import type { Assertion, Spec } from "./spec.ts";
 import { render } from "./template.ts";
 
 export interface CaseResult {
   spec: Spec;
+  /** Case name when the spec defines multiple cases; undefined for a lone case. */
+  name?: string;
   /** True when the provider call succeeded and every assertion passed. */
   pass: boolean;
   output?: string;
@@ -22,19 +24,41 @@ export interface RunOptions {
 
 const DEFAULT_JUDGE = process.env.GAUGE_JUDGE ?? "openai/gpt-4o-mini";
 
-/** Run one spec: render the prompt, call the provider, apply assertions. */
-export async function runSpec(spec: Spec, opts: RunOptions = {}): Promise<CaseResult> {
-  const resolve = opts.resolve ?? resolveProvider;
-  const ctx: ScoreContext = { resolve, judge: opts.judge ?? DEFAULT_JUDGE };
+interface RunCase {
+  name?: string;
+  vars: Record<string, unknown>;
+  assert: Assertion[];
+}
+
+/** Expand a spec into its cases (a single implicit case when `cases` is absent). */
+function expand(spec: Spec): RunCase[] {
+  const { vars, assert, cases } = spec.config;
+  if (!cases || cases.length === 0) {
+    return [{ vars, assert }];
+  }
+  return cases.map((c, i) => ({
+    name: c.name ?? `case ${i + 1}`,
+    vars: { ...vars, ...c.vars },
+    assert: [...assert, ...c.assert],
+  }));
+}
+
+async function runCase(
+  spec: Spec,
+  rc: RunCase,
+  resolve: Resolver,
+  ctx: ScoreContext,
+): Promise<CaseResult> {
   try {
     const { provider, model } = resolve(spec.config.provider);
-    const prompt = render(spec.prompt, spec.config.vars);
+    const prompt = render(spec.prompt, rc.vars);
     const { output, latencyMs } = await provider.complete({ model, prompt });
-    const scores = await Promise.all(spec.config.assert.map((a) => score(a, output, ctx)));
-    return { spec, output, latencyMs, scores, pass: scores.every((s) => s.pass) };
+    const scores = await Promise.all(rc.assert.map((a) => score(a, output, ctx)));
+    return { spec, name: rc.name, output, latencyMs, scores, pass: scores.every((s) => s.pass) };
   } catch (err) {
     return {
       spec,
+      name: rc.name,
       pass: false,
       scores: [],
       error: err instanceof Error ? err.message : String(err),
@@ -42,11 +66,22 @@ export async function runSpec(spec: Spec, opts: RunOptions = {}): Promise<CaseRe
   }
 }
 
+/** Run every case in a spec. */
+export async function runSpec(spec: Spec, opts: RunOptions = {}): Promise<CaseResult[]> {
+  const resolve = opts.resolve ?? resolveProvider;
+  const ctx: ScoreContext = { resolve, judge: opts.judge ?? DEFAULT_JUDGE };
+  const results: CaseResult[] = [];
+  for (const rc of expand(spec)) {
+    results.push(await runCase(spec, rc, resolve, ctx));
+  }
+  return results;
+}
+
 /** Run many specs sequentially. Concurrency lands in Phase 5. */
 export async function runAll(specs: Spec[], opts: RunOptions = {}): Promise<CaseResult[]> {
   const results: CaseResult[] = [];
   for (const spec of specs) {
-    results.push(await runSpec(spec, opts));
+    results.push(...(await runSpec(spec, opts)));
   }
   return results;
 }

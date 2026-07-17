@@ -19,12 +19,24 @@ export const AssertionSchema = z.union([
 ]);
 export type Assertion = z.infer<typeof AssertionSchema>;
 
-// One eval spec = one prompt, one set of vars, a list of assertions.
-// Matrix/multi-case expansion lands in Phase 3.
+// A case overrides/extends the spec-level vars and assertions. Case vars merge
+// over base vars; case assertions are appended to base assertions.
+export const CaseSchema = z
+  .object({
+    name: z.string().optional(),
+    vars: z.record(z.string(), z.unknown()).default({}),
+    assert: z.array(AssertionSchema).default([]),
+  })
+  .strict();
+export type CaseConfig = z.infer<typeof CaseSchema>;
+
+// One eval spec = one prompt run against one or more cases. With no `cases`,
+// the spec-level vars/assert form a single implicit case.
 export const SpecSchema = z.object({
   provider: ProviderSpecSchema,
   vars: z.record(z.string(), z.unknown()).default({}),
   assert: z.array(AssertionSchema).default([]),
+  cases: z.array(CaseSchema).optional(),
 });
 export type SpecConfig = z.infer<typeof SpecSchema>;
 

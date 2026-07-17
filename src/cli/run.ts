@@ -1,16 +1,45 @@
 import { readFile } from "node:fs/promises";
+import { type Config, loadConfig, loadEnv } from "../config.ts";
 import { parseSpec } from "../core/parse.ts";
-import { runAll } from "../core/runner.ts";
+import { type CaseResult, runAll } from "../core/runner.ts";
 import type { Spec } from "../core/spec.ts";
 import { reportJson } from "../reporters/json.ts";
+import { reportJunit } from "../reporters/junit.ts";
 import { reportTty } from "../reporters/tty.ts";
 import { discover } from "./discover.ts";
 
-/** `gauge run [paths...] [--reporter tty|json]` — discover, run, report. Returns an exit code. */
-export async function run(args: string[]): Promise<number> {
+interface Args {
+  paths: string[];
+  reporter?: string;
+  filter?: string;
+}
+
+type Reporter = (results: CaseResult[], cwd: string) => boolean;
+
+const ttyReporter: Reporter = (r, cwd) => reportTty(r, cwd);
+const REPORTERS: Record<string, Reporter> = {
+  tty: ttyReporter,
+  json: (r) => reportJson(r),
+  junit: (r) => reportJunit(r),
+};
+
+/** `gauge run [paths...] [--reporter tty|json|junit] [--filter substr]`. Returns an exit code. */
+export async function run(argv: string[]): Promise<number> {
   const cwd = process.cwd();
-  const { paths, reporter } = parseArgs(args);
-  const files = await discover(cwd, paths);
+  loadEnv(cwd);
+  const config = await loadConfig(cwd);
+  return runOnce(cwd, parseArgs(argv), config);
+}
+
+/** One discover→parse→run→report pass. Shared by `run` and `watch`. */
+export async function runOnce(cwd: string, args: Args, config: Config): Promise<number> {
+  const roots = args.paths.length > 0 ? args.paths : (config.paths ?? []);
+  const filter = args.filter ?? config.filter;
+  let files = await discover(cwd, roots);
+  if (filter) {
+    const needle = filter.toLowerCase();
+    files = files.filter((f) => f.toLowerCase().includes(needle));
+  }
   if (files.length === 0) {
     console.log("No eval files found (looked for **/*.eval.{md,yaml,yml}).");
     return 0;
@@ -26,23 +55,28 @@ export async function run(args: string[]): Promise<number> {
     }
   }
 
-  const results = await runAll(specs);
-  const ok = reporter === "json" ? reportJson(results) : reportTty(results, cwd);
-  return ok ? 0 : 1;
+  const results = await runAll(specs, { judge: config.judge });
+  const reporterName = args.reporter ?? config.reporter ?? "tty";
+  const reporter = REPORTERS[reporterName] ?? ttyReporter;
+  return reporter(results, cwd) ? 0 : 1;
 }
 
-function parseArgs(args: string[]): { paths: string[]; reporter: string } {
+export function parseArgs(argv: string[]): Args {
   const paths: string[] = [];
-  let reporter = "tty";
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
+  const args: Args = { paths };
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
     if (arg === "--reporter" || arg === "-r") {
-      reporter = args[++i] ?? "tty";
+      args.reporter = argv[++i];
     } else if (arg?.startsWith("--reporter=")) {
-      reporter = arg.slice("--reporter=".length);
+      args.reporter = arg.slice("--reporter=".length);
+    } else if (arg === "--filter" || arg === "-f") {
+      args.filter = argv[++i];
+    } else if (arg?.startsWith("--filter=")) {
+      args.filter = arg.slice("--filter=".length);
     } else if (arg) {
       paths.push(arg);
     }
   }
-  return { paths, reporter };
+  return args;
 }
