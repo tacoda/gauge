@@ -68,12 +68,30 @@ provider receives it as the `GAUGE_SYSTEM` env var (stdin stays the bare prompt)
 provider: openai/gpt-4o-mini          # vendor/model shorthand
 provider: anthropic/claude-opus-4-8
 provider: google/gemini-1.5-flash
+provider: mistral/mistral-large-latest
+provider: glm/glm-4.6                  # Zhipu GLM (Z.AI)
+provider: hf/meta-llama/Llama-3.3-70B-Instruct   # Hugging Face router (OSS models)
+provider: openrouter/anthropic/claude-3.5-sonnet # gateway to many vendors
 provider: ollama/llama3               # local, no key
 provider: azure/my-deployment         # deployment name as the model
 provider:                             # object form
   type: exec                          # shell out — any language harness
   command: "python my_harness.py"     # prompt on stdin, output on stdout
+provider:                             # any OpenAI-compatible host
+  type: openai-compat                 # DeepSeek, Groq, Together, Fireworks, …
+  baseUrl: https://api.deepseek.com/v1
+  model: deepseek-chat
+  apiKeyEnv: DEEPSEEK_API_KEY
 ```
+
+Keys are read from the environment at call time: `OPENAI_API_KEY`,
+`ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `MISTRAL_API_KEY`, `GLM_API_KEY`,
+`HF_TOKEN`, `OPENROUTER_API_KEY`, `AZURE_OPENAI_ENDPOINT` + `AZURE_OPENAI_API_KEY`.
+GLM defaults to the international Z.AI base; set `GLM_BASE_URL` for the CN
+(bigmodel.cn) region. Ollama needs no key (`OLLAMA_HOST`, default
+`localhost:11434`). The `openai-compat` object form reads the key from whatever
+env var you name in `apiKeyEnv` — use it for any OpenAI-compatible host without
+a built-in shorthand.
 
 Keys come from the environment: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`,
 `GEMINI_API_KEY`, `AZURE_OPENAI_ENDPOINT` + `AZURE_OPENAI_API_KEY`. Ollama uses
@@ -203,8 +221,10 @@ cache: false
 
 ## Status
 
-Stable (`1.1.0`). Providers: OpenAI, Anthropic, Google Gemini, Ollama, Azure OpenAI,
-exec — plus custom-provider and custom-scorer plugin APIs. Scorers:
+Stable (`1.1.0`). Providers: OpenAI, Anthropic, Google Gemini, Mistral, GLM (Zhipu),
+Hugging Face router, OpenRouter, Ollama, Azure OpenAI, exec, and a generic
+`openai-compat` object form for any OpenAI-compatible host — plus custom-provider
+and custom-scorer plugin APIs. Scorers:
 equals/contains/regex/llm-judge/llm-rate/json-schema/similarity, with numeric scores.
 tty/json/junit reporters; token usage + cost estimation; matrix cases; watch; config;
 regression baselines with output diffs; `init` and `report`; bounded concurrency;

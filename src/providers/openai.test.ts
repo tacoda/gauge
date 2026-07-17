@@ -30,6 +30,20 @@ test("sends model + user message and parses content", async () => {
   expect(body.messages).toEqual([{ role: "user", content: "hi" }]);
 });
 
+test("prepends a system message when the scenario set one", async () => {
+  const capture: Capture = {};
+  const p = new OpenAIProvider(
+    "sk-test",
+    mockFetch({ choices: [{ message: { content: "ok" } }] }, capture),
+  );
+  await p.complete({ model: "gpt-4o", prompt: "hi", system: "be terse" });
+  const body = JSON.parse(capture.init?.body as string);
+  expect(body.messages).toEqual([
+    { role: "system", content: "be terse" },
+    { role: "user", content: "hi" },
+  ]);
+});
+
 test("throws on API error status", async () => {
   const p = new OpenAIProvider("sk-test", mockFetch({ error: { message: "bad key" } }, {}, 401));
   await expect(p.complete({ model: "gpt-4o", prompt: "hi" })).rejects.toThrow(

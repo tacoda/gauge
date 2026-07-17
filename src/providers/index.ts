@@ -2,18 +2,28 @@ import type { ProviderSpec } from "../core/spec.ts";
 import { AnthropicProvider } from "./anthropic.ts";
 import { AzureOpenAIProvider } from "./azure.ts";
 import { ExecProvider } from "./exec.ts";
+import { GLMProvider } from "./glm.ts";
 import { GoogleProvider } from "./google.ts";
+import { HuggingFaceProvider } from "./huggingface.ts";
+import { MistralProvider } from "./mistral.ts";
 import { OllamaProvider } from "./ollama.ts";
+import { OpenAICompatProvider } from "./openai-compat.ts";
 import { OpenAIProvider } from "./openai.ts";
+import { OpenRouterProvider } from "./openrouter.ts";
 import type { Provider } from "./types.ts";
 
 export type { CompletionRequest, CompletionResult, Provider, Usage } from "./types.ts";
 export { AnthropicProvider } from "./anthropic.ts";
 export { AzureOpenAIProvider } from "./azure.ts";
 export { ExecProvider } from "./exec.ts";
+export { GLMProvider } from "./glm.ts";
 export { GoogleProvider } from "./google.ts";
+export { HuggingFaceProvider } from "./huggingface.ts";
+export { MistralProvider } from "./mistral.ts";
 export { OllamaProvider } from "./ollama.ts";
+export { OpenAICompatProvider, type OpenAICompatOptions } from "./openai-compat.ts";
 export { OpenAIProvider } from "./openai.ts";
+export { OpenRouterProvider } from "./openrouter.ts";
 
 export interface ResolvedProvider {
   provider: Provider;
@@ -29,6 +39,11 @@ const VENDORS: Record<string, () => Provider> = {
   google: () => new GoogleProvider(),
   ollama: () => new OllamaProvider(),
   azure: () => new AzureOpenAIProvider(),
+  glm: () => new GLMProvider(),
+  mistral: () => new MistralProvider(),
+  huggingface: () => new HuggingFaceProvider(),
+  hf: () => new HuggingFaceProvider(),
+  openrouter: () => new OpenRouterProvider(),
 };
 
 /**
@@ -72,5 +87,14 @@ function resolveObject(spec: Exclude<ProviderSpec, string>): ResolvedProvider {
     case "exec":
       // ExecProvider carries the command string in `model`.
       return { provider: new ExecProvider(), model: spec.command };
+    case "openai-compat": {
+      const endpoint = `${spec.baseUrl.replace(/\/$/, "")}/chat/completions`;
+      const provider = new OpenAICompatProvider({
+        vendor: spec.vendor ?? "openai-compat",
+        endpoint,
+        keyEnv: spec.apiKeyEnv,
+      });
+      return { provider, model: spec.model };
+    }
   }
 }

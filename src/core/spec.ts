@@ -7,6 +7,18 @@ export const ProviderSpecSchema = z.union([
   z.object({ type: z.literal("openai"), model: z.string().min(1) }).strict(),
   z.object({ type: z.literal("anthropic"), model: z.string().min(1) }).strict(),
   z.object({ type: z.literal("exec"), command: z.string().min(1) }).strict(),
+  // Any OpenAI-compatible host: give its base URL (…/v1) and the env var holding
+  // the Bearer key. Covers OpenRouter, DeepSeek, Groq, Together, Fireworks, etc.
+  z
+    .object({
+      type: z.literal("openai-compat"),
+      model: z.string().min(1),
+      baseUrl: z.string().min(1),
+      apiKeyEnv: z.string().min(1),
+      /** Optional label used in error messages; defaults to "openai-compat". */
+      vendor: z.string().optional(),
+    })
+    .strict(),
 ]);
 export type ProviderSpec = z.infer<typeof ProviderSpecSchema>;
 
