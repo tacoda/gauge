@@ -1,0 +1,50 @@
+{
+  "name": "gauge-eval",
+  "version": "0.2.0",
+  "description": "A test framework for LLM prompts. Write evals in Markdown, run them like tests.",
+  "type": "module",
+  "bin": {
+    "gauge": "dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "bun run build:js && bun run build:types",
+    "build:js": "bun build ./src/cli.ts ./src/index.ts --outdir dist --target node --format esm --packages external",
+    "build:types": "tsc --emitDeclarationOnly --outDir dist",
+    "dev": "bun run ./src/cli.ts",
+    "test": "bun test",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "prepublishOnly": "bun run build"
+  },
+  "keywords": [
+    "llm",
+    "eval",
+    "prompt",
+    "testing",
+    "ai",
+    "anthropic",
+    "openai",
+    "prompt-engineering"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/bun": "latest",
+    "typescript": "^5.7.0"
+  },
+  "trustedDependencies": ["@biomejs/biome"],
+  "dependencies": {
+    "yaml": "^2.9.0",
+    "zod": "^4.4.3"
+  }
+}
