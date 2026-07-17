@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>gauge — a test framework for LLM prompts</title>
+<meta name="description" content="gauge is a test framework for LLM prompts. Write evals in Markdown, run them like tests. Built for engineers building and using agent harnesses." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>" />
+<style>
+  :root {
+    --bg: #eceff1;
+    --surface: #ffffff;
+    --surface-2: #f7f9fa;
+    --ink: #1f2933;
+    --muted: #64748b;
+    --border: #d7dee3;
+    --green: #1f9d63;
+    --green-soft: #e5f5ec;
+    --red: #e5484d;
+    --red-soft: #fdecec;
+    --blue: #2f6fed;
+    --blue-soft: #e8f0fe;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --radius: 12px;
+    --shadow: 0 1px 2px rgba(31,41,51,.06), 0 4px 16px rgba(31,41,51,.06);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--sans); line-height: 1.6; font-size: 16px;
+  }
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code { font-family: var(--mono); font-size: .9em; }
+
+  /* Layout */
+  .shell { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+  .sidebar {
+    background: var(--surface); border-right: 1px solid var(--border);
+    padding: 22px 18px; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .brand .logo { font-size: 26px; }
+  .brand h1 { font-size: 22px; margin: 0; letter-spacing: -.5px; }
+  .brand .ver {
+    font: 600 11px/1 var(--mono); color: var(--green); background: var(--green-soft);
+    padding: 4px 7px; border-radius: 20px; margin-left: auto;
+  }
+  .tagline { color: var(--muted); font-size: 13px; margin: 0 0 18px 2px; }
+  nav.toc { display: flex; flex-direction: column; gap: 2px; }
+  nav.toc .group { font: 700 11px/1 var(--sans); text-transform: uppercase; letter-spacing: .08em;
+    color: var(--muted); margin: 16px 8px 6px; }
+  nav.toc a {
+    color: var(--ink); padding: 7px 10px; border-radius: 8px; font-size: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  nav.toc a:hover { background: var(--surface-2); text-decoration: none; }
+  nav.toc a.active { background: var(--blue-soft); color: var(--blue); font-weight: 600; }
+  nav.toc a .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); }
+  nav.toc a.active .dot { background: var(--blue); }
+
+  main { padding: 0; }
+  .content { max-width: 860px; margin: 0 auto; padding: 48px 40px 120px; }
+  section.route { display: none; animation: fade .25s ease; }
+  section.route.active { display: block; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  h2 { font-size: 30px; letter-spacing: -.6px; margin: 0 0 6px; }
+  h3 { font-size: 19px; margin: 34px 0 10px; letter-spacing: -.3px; }
+  .lead { color: var(--muted); font-size: 17px; margin: 0 0 28px; }
+  p { margin: 12px 0; }
+  ul { padding-left: 20px; }
+  li { margin: 6px 0; }
+
+  /* Pills / chips */
+  .chip { display: inline-flex; align-items: center; gap: 6px; font: 600 12px/1 var(--sans);
+    padding: 5px 10px; border-radius: 20px; }
+  .chip.pass { background: var(--green-soft); color: var(--green); }
+  .chip.fail { background: var(--red-soft); color: var(--red); }
+  .chip.blue { background: var(--blue-soft); color: var(--blue); }
+
+  /* Code blocks */
+  pre {
+    background: #0f172a; color: #e2e8f0; border-radius: var(--radius); padding: 16px 18px;
+    overflow-x: auto; font-family: var(--mono); font-size: 13.5px; line-height: 1.55; margin: 14px 0;
+    box-shadow: var(--shadow);
+  }
+  pre .c { color: #7c8aa5; }      /* comment */
+  pre .k { color: #7dd3fc; }      /* key */
+  pre .s { color: #86efac; }      /* string */
+  pre .p { color: #fca5a5; }      /* punctuation/flag */
+  code.inline { background: var(--surface-2); border: 1px solid var(--border);
+    padding: 2px 6px; border-radius: 6px; color: #b4245b; }
+
+  /* Terminal */
+  .term { background: #0f172a; border-radius: var(--radius); box-shadow: var(--shadow); margin: 18px 0; overflow: hidden; }
+  .term .bar { display: flex; gap: 7px; padding: 11px 14px; background: #1e293b; }
+  .term .bar i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .term .bar .r { background: #ff5f56; } .term .bar .y { background: #ffbd2e; } .term .bar .g { background: #27c93f; }
+  .term pre { margin: 0; border-radius: 0; box-shadow: none; background: transparent; }
+  .term .ok { color: #4ade80; } .term .no { color: #f87171; } .term .warn { color: #fbbf24; }
+  .term .dim { color: #7c8aa5; } .term .cmd { color: #e2e8f0; } .term .prompt { color: #4ade80; }
+
+  /* Cards */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 18px 0; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 18px; box-shadow: var(--shadow); }
+  .card h4 { margin: 0 0 6px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .card p { margin: 0; color: var(--muted); font-size: 14px; }
+  .card .ic { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; font-size: 15px; }
+  .ic.g { background: var(--green-soft); } .ic.r { background: var(--red-soft); } .ic.b { background: var(--blue-soft); }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14.5px;
+    background: var(--surface); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--border); }
+  th { background: var(--surface-2); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  tr:last-child td { border-bottom: none; }
+  td code { color: #b4245b; }
+
+  /* Hero */
+  .hero { text-align: left; margin-bottom: 8px; }
+  .hero .badge { display: inline-flex; gap: 8px; align-items: center; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 20px; padding: 6px 12px; font-size: 13px; color: var(--muted); box-shadow: var(--shadow); }
+  .hero h2 { font-size: 44px; margin: 18px 0 8px; line-height: 1.05; }
+  .hero .grad { background: linear-gradient(90deg, var(--green), var(--blue)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .install { display: flex; align-items: center; gap: 10px; background: #0f172a; color: #e2e8f0;
+    border-radius: 10px; padding: 12px 16px; font-family: var(--mono); font-size: 14px; margin: 22px 0; box-shadow: var(--shadow); }
+  .install .dollar { color: #4ade80; }
+  .install button { margin-left: auto; background: var(--blue); color: #fff; border: 0; border-radius: 7px;
+    padding: 7px 12px; font: 600 12px var(--sans); cursor: pointer; }
+  .install button:hover { filter: brightness(1.08); }
+  .cta { display: flex; gap: 12px; margin: 22px 0; flex-wrap: wrap; }
+  .btn { padding: 11px 18px; border-radius: 9px; font-weight: 600; font-size: 15px; }
+  .btn.primary { background: var(--blue); color: #fff; }
+  .btn.primary:hover { filter: brightness(1.08); text-decoration: none; }
+  .btn.ghost { background: var(--surface); border: 1px solid var(--border); color: var(--ink); }
+  .btn.ghost:hover { text-decoration: none; border-color: var(--blue); color: var(--blue); }
+
+  .note { border-left: 3px solid var(--blue); background: var(--blue-soft); padding: 12px 16px;
+    border-radius: 0 8px 8px 0; margin: 18px 0; font-size: 14.5px; }
+  .note.warn { border-color: var(--red); background: var(--red-soft); }
+
+  .pager { display: flex; justify-content: space-between; margin-top: 48px; border-top: 1px solid var(--border); padding-top: 20px; }
+  .pager a { font-weight: 600; }
+
+  .menu-btn { display: none; }
+  @media (max-width: 820px) {
+    .shell { grid-template-columns: 1fr; }
+    .sidebar { position: fixed; z-index: 40; width: 260px; left: -280px; transition: left .2s; box-shadow: var(--shadow); }
+    .sidebar.open { left: 0; }
+    .content { padding: 70px 22px 100px; }
+    .menu-btn { display: grid; place-items: center; position: fixed; top: 14px; left: 14px; z-index: 50;
+      width: 42px; height: 42px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      font-size: 20px; cursor: pointer; box-shadow: var(--shadow); }
+    .hero h2 { font-size: 34px; }
+  }
+</style>
+</head>
+<body>
+<button class="menu-btn" onclick="document.querySelector('.sidebar').classList.toggle('open')">☰</button>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo">🎯</span>
+      <h1>gauge</h1>
+      <span class="ver">v1.0</span>
+    </div>
+    <p class="tagline">A test framework for LLM prompts.</p>
+    <nav class="toc" id="toc">
+      <span class="group">Start</span>
+      <a href="#home"><span class="dot"></span>Overview</a>
+      <a href="#quickstart"><span class="dot"></span>Quickstart</a>
+      <a href="#format"><span class="dot"></span>Eval format</a>
+      <span class="group">Reference</span>
+      <a href="#providers"><span class="dot"></span>Providers</a>
+      <a href="#assertions"><span class="dot"></span>Assertions</a>
+      <a href="#matrix"><span class="dot"></span>Matrix cases</a>
+      <a href="#cli"><span class="dot"></span>CLI &amp; reporters</a>
+      <a href="#baselines"><span class="dot"></span>Regression baselines</a>
+      <a href="#config"><span class="dot"></span>Config &amp; caching</a>
+      <a href="#plugins"><span class="dot"></span>Custom providers</a>
+      <span class="group">More</span>
+      <a href="#harness"><span class="dot"></span>Testing a harness</a>
+      <a href="https://www.npmjs.com/package/gauge-eval" target="_blank"><span class="dot"></span>npm ↗</a>
+      <a href="https://github.com/tacoda/gauge" target="_blank"><span class="dot"></span>GitHub ↗</a>
+    </nav>
+  </aside>
+
+  <main>
+  <div class="content">
+
+    <!-- HOME -->
+    <section class="route" id="home">
+      <div class="hero">
+        <span class="badge">🎯 gauge-eval · MIT · Bun + TypeScript</span>
+        <h2>Test your prompts <span class="grad">like you test your code.</span></h2>
+        <p class="lead">Prompts drift. Harnesses and the tooling around them break in ways unit tests never catch.
+        <b>gauge</b> treats prompt evaluation like a test suite — declarative specs, a runner, assertions,
+        CI-friendly reporters — decoupled from whatever language your harness is written in.</p>
+        <div class="install">
+          <span class="dollar">$</span><span id="install-cmd">npx gauge-eval run</span>
+          <button onclick="copyInstall()">Copy</button>
+        </div>
+        <div class="cta">
+          <a class="btn primary" href="#quickstart">Get started →</a>
+          <a class="btn ghost" href="https://github.com/tacoda/gauge" target="_blank">Star on GitHub</a>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+<pre><span class="prompt">$</span> <span class="cmd">gauge run</span>
+<span class="ok">✓</span> evals/router.eval.md › password-reset <span class="dim">(1293ms)</span>
+  <span class="ok">✓</span> <span class="dim">contains "auth"</span>
+  <span class="ok">✓</span> <span class="dim">llm-rate "routes without asking a clarifying question" &gt;= 0.8</span>
+<span class="ok">✓</span> evals/router.eval.md › refund <span class="dim">(1170ms)</span>
+  <span class="ok">✓</span> <span class="dim">equals "billing"</span>
+<span class="no">✗</span> evals/summarize.eval.md <span class="dim">(980ms)</span>
+  <span class="warn">⚠ regression</span> <span class="dim">— score dropped 0.91 → 0.62</span>
+  <span class="no">✗</span> llm-judge "faithful to the source" <span class="dim">— judge failed: invents a statistic</span>
+
+<span class="cmd">2 passed, 1 failed, 3 total</span></pre>
+      </div>
+
+      <h3>Why gauge</h3>
+      <div class="grid">
+        <div class="card"><h4><span class="ic b">📝</span>Specs, not scripts</h4><p>Evals are Markdown files with YAML frontmatter. The prompt is the body. No glue code, no framework lock-in.</p></div>
+        <div class="card"><h4><span class="ic g">🌐</span>Language-agnostic</h4><p>The <code>exec</code> provider shells out to any harness — Python, Go, Rust — over stdin/stdout.</p></div>
+        <div class="card"><h4><span class="ic b">⚖️</span>Real scoring</h4><p>Exact match to LLM-as-judge to 0–1 rated thresholds. Binary gates for CI, scores for drift.</p></div>
+        <div class="card"><h4><span class="ic r">📉</span>Regression baselines</h4><p>Snapshot a passing run. Later runs flag anything that regressed — and fail the build.</p></div>
+        <div class="card"><h4><span class="ic g">⚡</span>Fast &amp; cheap</h4><p>Bounded concurrency, automatic retries, opt-in response caching.</p></div>
+        <div class="card"><h4><span class="ic b">🔌</span>Extensible</h4><p>Register custom providers with one function. Use it as a CLI or a library.</p></div>
+      </div>
+    </section>
+
+    <!-- QUICKSTART -->
+    <section class="route" id="quickstart">
+      <h2>Quickstart</h2>
+      <p class="lead">From zero to a passing eval in three steps.</p>
+
+      <h3>1. Set your API key</h3>
+      <p>gauge reads keys from the environment (or a <code class="inline">.env</code> file in the working directory).</p>
+<pre><span class="c"># OpenAI, Anthropic, or both</span>
+export OPENAI_API_KEY=sk-...
+export ANTHROPIC_API_KEY=sk-ant-...</pre>
+
+      <h3>2. Write an eval</h3>
+      <p>Create <code class="inline">evals/router.eval.md</code>. Frontmatter is config; the body is the prompt.</p>
+<pre><span class="p">---</span>
+<span class="k">provider:</span> <span class="s">openai/gpt-4o-mini</span>
+<span class="k">vars:</span>
+  <span class="k">input:</span> <span class="s">"I forgot my password"</span>
+<span class="k">assert:</span>
+  - <span class="k">contains:</span> <span class="s">"auth"</span>
+  - <span class="k">llm-judge:</span> <span class="s">"Routes correctly without asking a clarifying question"</span>
+<span class="p">---</span>
+
+You are a support router. Reply with one lowercase category slug
+(auth, billing, technical, other). No punctuation.
+
+User request: {{input}}</pre>
+
+      <h3>3. Run it</h3>
+<pre><span class="prompt">$</span> npx gauge-eval run</pre>
+      <div class="term">
+        <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+<pre><span class="ok">✓</span> evals/router.eval.md <span class="dim">(1293ms)</span>
+  <span class="ok">✓</span> <span class="dim">contains "auth"</span>
+  <span class="ok">✓</span> <span class="dim">llm-judge "Routes correctly without asking a clarifying question"</span>
+
+<span class="cmd">1 passed, 0 failed, 1 total</span></pre>
+      </div>
+      <div class="note">gauge discovers <code class="inline">**/*.eval.md</code> and <code class="inline">**/*.eval.yaml</code> automatically. Exit code is non-zero on failure — drop it straight into CI.</div>
+
+      <div class="pager"><span></span><a href="#format">Eval format →</a></div>
+    </section>
+
+    <!-- FORMAT -->
+    <section class="route" id="format">
+      <h2>Eval format</h2>
+      <p class="lead">One file is one eval: a prompt, the variables it needs, and the assertions its output must satisfy.</p>
+      <p>Two shapes are supported. Markdown with YAML frontmatter — best when the prompt is real prose:</p>
+<pre><span class="p">---</span>
+<span class="k">provider:</span> <span class="s">anthropic/claude-opus-4-8</span>
+<span class="k">vars:</span>
+  <span class="k">topic:</span> <span class="s">photosynthesis</span>
+<span class="k">assert:</span>
+  - <span class="k">contains:</span> <span class="s">"sunlight"</span>
+<span class="p">---</span>
+
+Explain {{topic}} to a 10-year-old in two sentences.</pre>
+      <p>…or a single YAML document — handy for matrix-heavy, prose-light cases (the prompt lives in a <code class="inline">prompt:</code> field):</p>
+<pre><span class="k">provider:</span> <span class="s">openai/gpt-4o</span>
+<span class="k">prompt:</span> <span class="s">"Classify sentiment (pos/neg): {{text}}"</span>
+<span class="k">assert:</span>
+  - <span class="k">regex:</span> <span class="s">"/^(pos|neg)$/"</span></pre>
+
+      <h3>Variables</h3>
+      <p><code class="inline">{{name}}</code> placeholders in the prompt are filled from <code class="inline">vars</code>. A missing variable is an error, not a silent blank — so typos surface immediately.</p>
+
+      <div class="pager"><a href="#quickstart">← Quickstart</a><a href="#providers">Providers →</a></div>
+    </section>
+
+    <!-- PROVIDERS -->
+    <section class="route" id="providers">
+      <h2>Providers</h2>
+      <p class="lead">Where the prompt runs. Use the <code class="inline">vendor/model</code> shorthand, or the object form for providers that need more.</p>
+      <table>
+        <tr><th>Provider</th><th>Spec</th><th>Notes</th></tr>
+        <tr><td><span class="chip blue">openai</span></td><td><code>openai/gpt-4o-mini</code></td><td>Reads <code>OPENAI_API_KEY</code></td></tr>
+        <tr><td><span class="chip blue">anthropic</span></td><td><code>anthropic/claude-opus-4-8</code></td><td>Reads <code>ANTHROPIC_API_KEY</code></td></tr>
+        <tr><td><span class="chip green">exec</span></td><td>object form ↓</td><td>Shell out to any harness</td></tr>
+      </table>
+
+      <h3>The exec provider — test any harness, any language</h3>
+      <p>This is the escape hatch that makes gauge work for tooling built on top of harnesses. The rendered prompt is written to the command's <b>stdin</b>; its <b>stdout</b> becomes the output. Your harness stays in whatever language it's written in.</p>
+<pre><span class="p">---</span>
+<span class="k">provider:</span>
+  <span class="k">type:</span> <span class="s">exec</span>
+  <span class="k">command:</span> <span class="s">"python my_agent.py --tool-router"</span>
+<span class="k">assert:</span>
+  - <span class="k">llm-judge:</span> <span class="s">"Selected the search tool, not the calculator"</span>
+<span class="p">---</span>
+
+Find me flights to Lisbon under $600.</pre>
+      <div class="note">Because <code class="inline">exec</code> speaks stdin/stdout, the same eval suite works whether your agent is in Python, Go, Rust, or a shell script. The contract is the prompt and the output — never the implementation.</div>
+
+      <div class="pager"><a href="#format">← Eval format</a><a href="#assertions">Assertions →</a></div>
+    </section>
+
+    <!-- ASSERTIONS -->
+    <section class="route" id="assertions">
+      <h2>Assertions</h2>
+      <p class="lead">Each assertion is a one-key object. A case passes when every assertion passes.</p>
+      <table>
+        <tr><th>Assertion</th><th>Passes when</th></tr>
+        <tr><td><code>equals: "x"</code></td><td>output is exactly <code>x</code></td></tr>
+        <tr><td><code>contains: "x"</code></td><td>output contains <code>x</code></td></tr>
+        <tr><td><code>regex: "/x/i"</code></td><td>output matches — bare pattern or <code>/pattern/flags</code></td></tr>
+        <tr><td><code>llm-judge: "rubric"</code></td><td>a judge model grades the output PASS against the rubric</td></tr>
+        <tr><td><code>llm-rate: { rubric, min }</code></td><td>a judge rates the output 0–1; passes at or above <code>min</code></td></tr>
+      </table>
+
+      <h3>Deterministic checks</h3>
+<pre><span class="k">assert:</span>
+  - <span class="k">equals:</span> <span class="s">"billing"</span>
+  - <span class="k">contains:</span> <span class="s">"refund"</span>
+  - <span class="k">regex:</span> <span class="s">"/^(auth|billing|other)$/"</span>   <span class="c"># JS has no (?i) — use /.../i</span></pre>
+
+      <h3>LLM-as-judge</h3>
+      <p>When correctness is fuzzy, let a model grade it. <code class="inline">llm-judge</code> is a binary gate; <code class="inline">llm-rate</code> returns a graded 0–1 score with a threshold — useful for tracking drift over time.</p>
+<pre><span class="k">assert:</span>
+  - <span class="k">llm-judge:</span> <span class="s">"Faithful to the source; invents no facts"</span>
+  - <span class="k">llm-rate:</span>
+      <span class="k">rubric:</span> <span class="s">"Clear enough for a 10-year-old"</span>
+      <span class="k">min:</span> <span class="s">0.8</span></pre>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin:14px 0;">
+        <span class="chip pass">✓ PASS · score 0.95</span>
+        <span class="chip fail">✗ FAIL · scored 0.50 (&lt; 0.8)</span>
+        <span class="chip blue">judge: openai/gpt-4o-mini</span>
+      </div>
+      <div class="note">The judge model defaults to <code class="inline">openai/gpt-4o-mini</code>. Override it with the <code class="inline">GAUGE_JUDGE</code> env var or the <code class="inline">judge</code> config key. Every case also gets a numeric <code class="inline">score</code> — the mean of its assertion scores.</div>
+
+      <div class="pager"><a href="#providers">← Providers</a><a href="#matrix">Matrix cases →</a></div>
+    </section>
+
+    <!-- MATRIX -->
+    <section class="route" id="matrix">
+      <h2>Matrix cases</h2>
+      <p class="lead">One prompt, many inputs. Spec-level <code class="inline">vars</code> and <code class="inline">assert</code> are shared; each case merges its own vars over them and appends its own assertions.</p>
+<pre><span class="p">---</span>
+<span class="k">provider:</span> <span class="s">openai/gpt-4o-mini</span>
+<span class="k">assert:</span>
+  - <span class="k">regex:</span> <span class="s">"/^(auth|billing|technical|other)$/"</span>   <span class="c"># every case</span>
+<span class="k">cases:</span>
+  - <span class="k">name:</span> <span class="s">password-reset</span>
+    <span class="k">vars:</span> { <span class="k">input:</span> <span class="s">"I forgot my password"</span> }
+    <span class="k">assert:</span> [{ <span class="k">equals:</span> <span class="s">"auth"</span> }]
+  - <span class="k">name:</span> <span class="s">refund</span>
+    <span class="k">vars:</span> { <span class="k">input:</span> <span class="s">"I want a refund"</span> }
+    <span class="k">assert:</span> [{ <span class="k">equals:</span> <span class="s">"billing"</span> }]
+<span class="p">---</span>
+
+Classify the request into one category slug: {{input}}</pre>
+      <div class="term">
+        <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+<pre><span class="ok">✓</span> evals/router.eval.md › password-reset <span class="dim">(1293ms)</span>
+  <span class="ok">✓</span> <span class="dim">regex /^(auth|billing|technical|other)$/</span>
+  <span class="ok">✓</span> <span class="dim">equals "auth"</span>
+<span class="ok">✓</span> evals/router.eval.md › refund <span class="dim">(1170ms)</span>
+  <span class="ok">✓</span> <span class="dim">equals "billing"</span>
+
+<span class="cmd">2 passed, 0 failed, 2 total</span></pre>
+      </div>
+      <div class="pager"><a href="#assertions">← Assertions</a><a href="#cli">CLI &amp; reporters →</a></div>
+    </section>
+
+    <!-- CLI -->
+    <section class="route" id="cli">
+      <h2>CLI &amp; reporters</h2>
+      <p class="lead">Three commands, a handful of flags, exit codes that mean something.</p>
+<pre><span class="prompt">$</span> gauge run [paths...] <span class="p">[-r tty|json|junit] [-f &lt;substr&gt;] [-u] [-c &lt;n&gt;] [--cache]</span>
+<span class="prompt">$</span> gauge watch [paths...]        <span class="c"># re-run on change</span>
+<span class="prompt">$</span> gauge report                  <span class="c"># reprint the last run</span></pre>
+      <table>
+        <tr><th>Flag</th><th>Effect</th></tr>
+        <tr><td><code>-r, --reporter</code></td><td><span class="chip blue">tty</span> (default) · <code>json</code> · <code>junit</code></td></tr>
+        <tr><td><code>-f, --filter</code></td><td>keep only specs whose path matches the substring</td></tr>
+        <tr><td><code>-u, --update-baseline</code></td><td>save this run as the regression baseline</td></tr>
+        <tr><td><code>-c, --concurrency</code></td><td>max cases in parallel (default 5)</td></tr>
+        <tr><td><code>--cache / --no-cache</code></td><td>cache provider responses on disk</td></tr>
+      </table>
+      <h3>Reporters</h3>
+      <div class="grid">
+        <div class="card"><h4><span class="ic b">🖥️</span>tty</h4><p>Colorized pass/fail for humans. The default.</p></div>
+        <div class="card"><h4><span class="ic g">{ }</span>json</h4><p>Machine-readable — pipe into dashboards or scripts.</p></div>
+        <div class="card"><h4><span class="ic r">CI</span>junit</h4><p>JUnit XML for GitHub Actions, GitLab, Jenkins, and friends.</p></div>
+      </div>
+      <div class="pager"><a href="#matrix">← Matrix cases</a><a href="#baselines">Regression baselines →</a></div>
+    </section>
+
+    <!-- BASELINES -->
+    <section class="route" id="baselines">
+      <h2>Regression baselines</h2>
+      <p class="lead">The feature that turns a test runner into an eval framework: catch the day your prompt quietly gets worse.</p>
+<pre><span class="prompt">$</span> gauge run -u        <span class="c"># snapshot this run as the baseline</span>
+<span class="prompt">$</span> gauge run           <span class="c"># later runs compare against it</span></pre>
+      <p>A case <b>regresses</b> — and fails the run — when:</p>
+      <ul>
+        <li>it was passing in the baseline and now fails,</li>
+        <li>its score drops by more than <code class="inline">0.05</code>, or</li>
+        <li>(for assertion-free cases) its output changes.</li>
+      </ul>
+      <div class="term">
+        <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+<pre><span class="warn">⚠ 1 regression(s) vs baseline.</span>
+
+<span class="no">✗</span> evals/summarize.eval.md <span class="dim">(980ms)</span>
+  <span class="warn">⚠ regression</span> <span class="dim">— score dropped 0.91 → 0.62</span>
+
+<span class="cmd">0 passed, 1 failed, 1 total</span>   <span class="dim">exit 1</span></pre>
+      </div>
+      <p>Every run is also written to <code class="inline">.gauge/last-run.json</code> for <code class="inline">gauge report</code>. Add <code class="inline">.gauge/</code> to your <code class="inline">.gitignore</code> — or commit <code class="inline">baseline.json</code> if you want the baseline versioned with the code.</p>
+      <div class="pager"><a href="#cli">← CLI &amp; reporters</a><a href="#config">Config &amp; caching →</a></div>
+    </section>
+
+    <!-- CONFIG -->
+    <section class="route" id="config">
+      <h2>Config &amp; caching</h2>
+      <p class="lead">Optional <code class="inline">gauge.config.yaml</code> in the working directory sets defaults. CLI flags always win.</p>
+<pre><span class="k">paths:</span> [<span class="s">evals</span>]
+<span class="k">reporter:</span> <span class="s">tty</span>           <span class="c"># tty | json | junit</span>
+<span class="k">judge:</span> <span class="s">openai/gpt-4o-mini</span>
+<span class="k">filter:</span> <span class="s">""</span>
+<span class="k">concurrency:</span> <span class="s">5</span>
+<span class="k">cache:</span> <span class="s">false</span></pre>
+      <h3>Response caching</h3>
+      <p>With <code class="inline">--cache</code> (or <code class="inline">cache: true</code>), identical <code class="inline">(model, prompt)</code> calls are served from <code class="inline">.gauge/cache</code>. Two wins: re-runs are near-instant, and runs become deterministic — which pairs well with baselines.</p>
+      <div class="term">
+        <div class="bar"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+<pre><span class="prompt">$</span> time gauge run --cache   <span class="c"># first run — live API</span>
+<span class="dim">... 2.96s</span>
+<span class="prompt">$</span> time gauge run --cache   <span class="c"># second run — cache hit</span>
+<span class="dim">... 0.07s</span></pre>
+      </div>
+      <div class="note">Requests automatically retry on transient errors (429 and 5xx) with exponential backoff, so a flaky rate limit won't fail your suite.</div>
+      <div class="pager"><a href="#baselines">← Regression baselines</a><a href="#plugins">Custom providers →</a></div>
+    </section>
+
+    <!-- PLUGINS -->
+    <section class="route" id="plugins">
+      <h2>Custom providers</h2>
+      <p class="lead">Use gauge as a library and register your own vendor with one function.</p>
+<pre><span class="k">import</span> { registerProvider } <span class="k">from</span> <span class="s">"gauge-eval"</span>;
+
+registerProvider(<span class="s">"myllm"</span>, () => ({
+  vendor: <span class="s">"myllm"</span>,
+  <span class="k">async</span> complete({ model, prompt }) {
+    <span class="k">const</span> output = <span class="k">await</span> callMyModel(model, prompt);
+    <span class="k">return</span> { output, latencyMs: 0 };
+  },
+}));</pre>
+      <p>Then reference it in any spec:</p>
+<pre><span class="k">provider:</span> <span class="s">myllm/some-model</span></pre>
+      <p>The library also exports the runner, parser, scorers, and store, so you can build gauge into a larger workflow:</p>
+<pre><span class="k">import</span> { parseSpec, runAll } <span class="k">from</span> <span class="s">"gauge-eval"</span>;
+
+<span class="k">const</span> spec = parseSpec(<span class="s">"x.eval.md"</span>, source);
+<span class="k">const</span> results = <span class="k">await</span> runAll([spec], { concurrency: 8 });</pre>
+      <div class="pager"><a href="#config">← Config &amp; caching</a><a href="#harness">Testing a harness →</a></div>
+    </section>
+
+    <!-- HARNESS -->
+    <section class="route" id="harness">
+      <h2>Testing an agent harness</h2>
+      <p class="lead">gauge was built for the layer most eval tools ignore: the tooling wrapped around a model — routers, tool-selectors, retrievers, multi-step agents.</p>
+
+      <h3>The pattern</h3>
+      <ul>
+        <li><b>Expose a text-in / text-out entry point</b> in your harness (a subcommand, a script).</li>
+        <li><b>Point the <code class="inline">exec</code> provider at it.</b> gauge feeds the prompt on stdin, reads the result on stdout.</li>
+        <li><b>Assert on behavior</b> — the tool it picked, the route it chose, the faithfulness of the answer.</li>
+        <li><b>Baseline it</b> so a prompt tweak that breaks tool selection fails CI instead of shipping.</li>
+      </ul>
+
+      <h3>Example: a tool-router regression suite</h3>
+<pre><span class="p">---</span>
+<span class="k">provider:</span>
+  <span class="k">type:</span> <span class="s">exec</span>
+  <span class="k">command:</span> <span class="s">"node dist/agent.js --print-tool"</span>
+<span class="k">cases:</span>
+  - <span class="k">name:</span> <span class="s">weather-needs-search</span>
+    <span class="k">vars:</span> { <span class="k">q:</span> <span class="s">"what's the weather in Lisbon?"</span> }
+    <span class="k">assert:</span> [{ <span class="k">equals:</span> <span class="s">"web_search"</span> }]
+  - <span class="k">name:</span> <span class="s">math-needs-calc</span>
+    <span class="k">vars:</span> { <span class="k">q:</span> <span class="s">"what is 4.2% of 1,900?"</span> }
+    <span class="k">assert:</span> [{ <span class="k">equals:</span> <span class="s">"calculator"</span> }]
+<span class="p">---</span>
+
+{{q}}</pre>
+      <div class="note">Wire <code class="inline">gauge run --reporter junit</code> into CI and gate merges on it. Now "the model got worse" is a red build, not a support ticket three weeks later.</div>
+
+      <div class="pager"><a href="#plugins">← Custom providers</a><a href="#home">Back to overview →</a></div>
+    </section>
+
+  </div>
+  </main>
+</div>
+
+<script>
+  const routes = ["home","quickstart","format","providers","assertions","matrix","cli","baselines","config","plugins","harness"];
+  function show(id) {
+    if (!routes.includes(id)) id = "home";
+    document.querySelectorAll("section.route").forEach(s => s.classList.toggle("active", s.id === id));
+    document.querySelectorAll("#toc a").forEach(a => a.classList.toggle("active", a.getAttribute("href") === "#" + id));
+    document.querySelector(".sidebar").classList.remove("open");
+    window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
+  }
+  window.addEventListener("hashchange", () => show(location.hash.slice(1)));
+  show(location.hash.slice(1) || "home");
+
+  function copyInstall() {
+    navigator.clipboard.writeText("npx gauge-eval run").then(() => {
+      const b = event.target; const t = b.textContent; b.textContent = "Copied ✓";
+      setTimeout(() => b.textContent = t, 1400);
+    });
+  }
+</script>
+</body>
+</html>
