@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 const CONFIG = `# gauge configuration — CLI flags override these.
 paths: [evals]
-reporter: tty          # tty | json | junit
+reporter: tty          # tty | json | junit | html
 judge: openai/gpt-4o-mini
 concurrency: 5
 cache: false
@@ -11,15 +11,18 @@ cache: false
 
 const EXAMPLE = `---
 provider: openai/gpt-4o-mini
-vars:
-  input: "I forgot my password"
+# scenario = the setup (BDD "Given"): the agent + shared context.
+scenario:
+  system: |
+    You are a support router. Reply with one lowercase category slug
+    (auth, billing, technical, other). No punctuation.
+  vars:
+    input: "I forgot my password"
+# assert = the expectations (BDD "Then").
 assert:
   - contains: "auth"
   - llm-judge: "Routes correctly without asking a clarifying question"
 ---
-
-You are a support router. Reply with one lowercase category slug
-(auth, billing, technical, other). No punctuation.
 
 User request: {{input}}
 `;
