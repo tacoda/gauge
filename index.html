@@ -175,6 +175,7 @@
       <a href="#quickstart"><span class="dot"></span>Quickstart</a>
       <a href="#format"><span class="dot"></span>Eval format</a>
       <span class="group">Reference</span>
+      <a href="#scenarios"><span class="dot"></span>Scenarios</a>
       <a href="#providers"><span class="dot"></span>Providers</a>
       <a href="#assertions"><span class="dot"></span>Assertions</a>
       <a href="#matrix"><span class="dot"></span>Matrix cases</a>
@@ -288,6 +289,9 @@ User request: {{input}}</pre>
       <p>Two shapes are supported. Markdown with YAML frontmatter — best when the prompt is real prose:</p>
 <pre><span class="p">---</span>
 <span class="k">provider:</span> <span class="s">anthropic/claude-opus-4-8</span>
+<span class="c"># scenario is optional — it sets up the world before the prompt runs</span>
+<span class="k">scenario:</span>
+  <span class="k">system:</span> <span class="s">You are a patient science teacher.</span>
 <span class="k">vars:</span>
   <span class="k">topic:</span> <span class="s">photosynthesis</span>
 <span class="k">assert:</span>
@@ -295,6 +299,7 @@ User request: {{input}}</pre>
 <span class="p">---</span>
 
 Explain {{topic}} to a 10-year-old in two sentences.</pre>
+      <p>The optional <code class="inline">scenario</code> block is the setup step — the agent <code class="inline">system</code> prompt and shared context. See <a href="#scenarios">Scenarios</a> for the full picture; skip it for a bare prompt.</p>
       <p>…or a single YAML document — handy for matrix-heavy, prose-light cases (the prompt lives in a <code class="inline">prompt:</code> field):</p>
 <pre><span class="k">provider:</span> <span class="s">openai/gpt-4o</span>
 <span class="k">prompt:</span> <span class="s">"Classify sentiment (pos/neg): {{text}}"</span>
@@ -304,7 +309,44 @@ Explain {{topic}} to a 10-year-old in two sentences.</pre>
       <h3>Variables</h3>
       <p><code class="inline">{{name}}</code> placeholders in the prompt are filled from <code class="inline">vars</code>. A missing variable is an error, not a silent blank — so typos surface immediately.</p>
 
-      <div class="pager"><a href="#quickstart">← Quickstart</a><a href="#providers">Providers →</a></div>
+      <div class="pager"><a href="#quickstart">← Quickstart</a><a href="#scenarios">Scenarios →</a></div>
+    </section>
+
+    <!-- SCENARIOS -->
+    <section class="route" id="scenarios">
+      <h2>Scenarios</h2>
+      <p class="lead">If you like BDD, the pieces line up: a <b>scenario</b> is the <b>Given</b>, the prompt body is the <b>When</b>, and <code class="inline">assert</code> is the <b>Then</b>. The scenario sets up the world before the prompt runs.</p>
+
+      <table>
+        <tr><th>BDD</th><th>gauge</th></tr>
+        <tr><td>Given — set up the world</td><td><code>scenario</code> (<code>system</code> + <code>vars</code>)</td></tr>
+        <tr><td>When — the action</td><td>the prompt body + <code>vars</code></td></tr>
+        <tr><td>Then — the expectation</td><td><code>assert</code></td></tr>
+        <tr><td>Examples / table</td><td><code>cases</code></td></tr>
+      </table>
+
+      <p><code class="inline">system</code> becomes the model's system / agent instruction; <code class="inline">vars</code> form the base layer that spec- and case-level vars merge over. Both are rendered with the case's vars, so a scenario can interpolate <code class="inline">{{...}}</code> too.</p>
+<pre><span class="p">---</span>
+<span class="k">provider:</span> <span class="s">anthropic/claude-opus-4-8</span>
+<span class="k">scenario:</span>
+  <span class="k">system:</span> <span class="s">You are a terse support router. Queues: {{queues}}.</span>
+  <span class="k">vars:</span>
+    <span class="k">queues:</span> <span class="s">"auth, billing, other"</span>
+<span class="k">assert:</span>
+  - <span class="k">regex:</span> <span class="s">"/^(auth|billing|other)$/"</span>
+<span class="p">---</span>
+
+Classify: {{input}}</pre>
+
+      <h3>Var precedence</h3>
+      <p>Last wins: <code class="inline">scenario.vars</code> → spec <code class="inline">vars</code> → case <code class="inline">vars</code>. A scenario sets the shared defaults; individual cases override what they need.</p>
+
+      <h3>How <code class="inline">system</code> reaches the model</h3>
+      <p>It maps to each provider's native system role — an OpenAI/Azure system message, Anthropic's top-level <code class="inline">system</code>, Gemini's <code class="inline">systemInstruction</code>, Ollama's <code class="inline">system</code>. The <code class="inline">exec</code> provider receives it as the <code class="inline">GAUGE_SYSTEM</code> environment variable, so stdin stays the bare prompt.</p>
+
+      <div class="note">Reuse one agent across many checks: put the <code class="inline">system</code> and shared context in <code class="inline">scenario</code>, then drive it with a <a href="#matrix">matrix of cases</a> — each case is one example of the same set-up world.</div>
+
+      <div class="pager"><a href="#format">← Eval format</a><a href="#providers">Providers →</a></div>
     </section>
 
     <!-- PROVIDERS -->
@@ -348,7 +390,7 @@ Find me flights to Lisbon under $600.</pre>
   <span class="k">model:</span> <span class="s">deepseek-chat</span>
   <span class="k">apiKeyEnv:</span> <span class="s">DEEPSEEK_API_KEY</span></pre>
 
-      <div class="pager"><a href="#format">← Eval format</a><a href="#assertions">Assertions →</a></div>
+      <div class="pager"><a href="#scenarios">← Scenarios</a><a href="#assertions">Assertions →</a></div>
     </section>
 
     <!-- ASSERTIONS -->
@@ -585,7 +627,7 @@ registerScorer(<span class="s">"word-count-under"</span>, (value, output) => {
 </div>
 
 <script>
-  const routes = ["home","quickstart","format","providers","assertions","matrix","cli","baselines","config","plugins","harness"];
+  const routes = ["home","quickstart","format","scenarios","providers","assertions","matrix","cli","baselines","config","plugins","harness"];
   function show(id) {
     if (!routes.includes(id)) id = "home";
     document.querySelectorAll("section.route").forEach(s => s.classList.toggle("active", s.id === id));
