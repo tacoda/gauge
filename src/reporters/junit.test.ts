@@ -23,7 +23,13 @@ const spec = {
 
 test("emits a passing testsuite", () => {
   const results: CaseResult[] = [
-    { spec, pass: true, latencyMs: 1200, scores: [{ label: "contains", pass: true, message: "" }] },
+    {
+      spec,
+      pass: true,
+      score: 1,
+      latencyMs: 1200,
+      scores: [{ label: "contains", pass: true, score: 1, message: "" }],
+    },
   ];
   const { out, ok } = capture(() => reportJunit(results));
   expect(ok).toBe(true);
@@ -37,9 +43,10 @@ test("records failures and errors distinctly and escapes XML", () => {
       spec,
       name: "c1",
       pass: false,
-      scores: [{ label: "contains <x>", pass: false, message: "no" }],
+      score: 0,
+      scores: [{ label: "contains <x>", pass: false, score: 0, message: "no" }],
     },
-    { spec, name: "c2", pass: false, scores: [], error: "boom & fail" },
+    { spec, name: "c2", pass: false, score: 0, scores: [], error: "boom & fail" },
   ];
   const { out, ok } = capture(() => reportJunit(results));
   expect(ok).toBe(false);

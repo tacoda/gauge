@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { report } from "./cli/report.ts";
 import { run } from "./cli/run.ts";
 import { watch } from "./cli/watch.ts";
 import { VERSION } from "./index.ts";
@@ -19,8 +20,7 @@ switch (cmd) {
     process.exit(await watch(rest));
     break;
   case "report":
-    console.log('gauge: "report" lands in a later phase.');
-    process.exit(1);
+    process.exit(await report());
     break;
   default:
     console.log(
@@ -32,11 +32,12 @@ switch (cmd) {
         "Commands:",
         "  run [paths]   run evals (defaults to discovering **/*.eval.{md,yaml,yml})",
         "  watch         re-run on change",
-        "  report        show last run (Phase 4)",
+        "  report        reprint the last run",
         "",
         "Options:",
         "  -r, --reporter <tty|json|junit>",
         "  -f, --filter <substring>",
+        "  -u, --update-baseline   save this run as the regression baseline",
         "  -v, --version",
       ].join("\n"),
     );

@@ -6,10 +6,17 @@ export function reportJson(results: CaseResult[]): boolean {
     path: r.spec.path,
     name: r.name,
     pass: r.pass,
+    score: r.score,
     output: r.output,
     latencyMs: r.latencyMs,
     error: r.error,
-    assertions: r.scores.map((s) => ({ label: s.label, pass: s.pass, message: s.message })),
+    regression: r.regression,
+    assertions: r.scores.map((s) => ({
+      label: s.label,
+      pass: s.pass,
+      score: s.score,
+      message: s.message,
+    })),
   }));
   const passed = cases.filter((c) => c.pass).length;
   const summary = { total: cases.length, passed, failed: cases.length - passed };

@@ -16,6 +16,12 @@ export const AssertionSchema = z.union([
   z.object({ contains: z.string() }).strict(),
   z.object({ regex: z.string() }).strict(),
   z.object({ "llm-judge": z.string().min(1) }).strict(),
+  // Judge rates the output 0–1 against the rubric; passes at or above `min`.
+  z
+    .object({
+      "llm-rate": z.object({ rubric: z.string().min(1), min: z.number().min(0).max(1) }).strict(),
+    })
+    .strict(),
 ]);
 export type Assertion = z.infer<typeof AssertionSchema>;
 

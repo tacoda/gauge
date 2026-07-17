@@ -3,6 +3,7 @@ import type { CaseResult } from "../core/runner.ts";
 
 const GREEN = "\x1b[32m";
 const RED = "\x1b[31m";
+const YELLOW = "\x1b[33m";
 const DIM = "\x1b[2m";
 const RESET = "\x1b[0m";
 
@@ -22,6 +23,9 @@ export function reportTty(results: CaseResult[], cwd = process.cwd()): boolean {
     const mark = r.pass ? color(GREEN, "✓") : color(RED, "✗");
     const timing = r.latencyMs != null ? color(DIM, ` (${r.latencyMs}ms)`) : "";
     console.log(`${mark} ${name}${timing}`);
+    if (r.regression) {
+      console.log(`  ${color(YELLOW, "⚠ regression")} ${color(DIM, `— ${r.regression}`)}`);
+    }
     for (const s of r.scores) {
       if (s.pass) {
         console.log(`  ${color(GREEN, "✓")} ${color(DIM, s.label)}`);

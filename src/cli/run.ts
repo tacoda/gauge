@@ -3,6 +3,7 @@ import { type Config, loadConfig, loadEnv } from "../config.ts";
 import { parseSpec } from "../core/parse.ts";
 import { type CaseResult, runAll } from "../core/runner.ts";
 import type { Spec } from "../core/spec.ts";
+import { annotateRegressions, loadBaseline, saveBaseline, saveLastRun } from "../core/store.ts";
 import { reportJson } from "../reporters/json.ts";
 import { reportJunit } from "../reporters/junit.ts";
 import { reportTty } from "../reporters/tty.ts";
@@ -12,6 +13,8 @@ interface Args {
   paths: string[];
   reporter?: string;
   filter?: string;
+  /** Write current results as the new baseline instead of comparing. */
+  updateBaseline?: boolean;
 }
 
 type Reporter = (results: CaseResult[], cwd: string) => boolean;
@@ -56,6 +59,19 @@ export async function runOnce(cwd: string, args: Args, config: Config): Promise<
   }
 
   const results = await runAll(specs, { judge: config.judge });
+
+  if (args.updateBaseline) {
+    await saveBaseline(cwd, results);
+    console.log(`Baseline updated (${results.length} cases).`);
+  } else {
+    const baseline = await loadBaseline(cwd);
+    if (baseline) {
+      const regressions = annotateRegressions(cwd, results, baseline);
+      if (regressions > 0) console.log(`⚠ ${regressions} regression(s) vs baseline.\n`);
+    }
+  }
+  await saveLastRun(cwd, results);
+
   const reporterName = args.reporter ?? config.reporter ?? "tty";
   const reporter = REPORTERS[reporterName] ?? ttyReporter;
   return reporter(results, cwd) ? 0 : 1;
@@ -74,6 +90,8 @@ export function parseArgs(argv: string[]): Args {
       args.filter = argv[++i];
     } else if (arg?.startsWith("--filter=")) {
       args.filter = arg.slice("--filter=".length);
+    } else if (arg === "--update-baseline" || arg === "-u") {
+      args.updateBaseline = true;
     } else if (arg) {
       paths.push(arg);
     }

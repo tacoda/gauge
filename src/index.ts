@@ -1,12 +1,20 @@
 // gauge-eval public library API.
 
-export const VERSION = "0.3.0";
+export const VERSION = "0.4.0";
 
 export { type Config, loadConfig, loadEnv } from "./config.ts";
 export { parseSpec, SpecError } from "./core/parse.ts";
 export { runAll, runSpec, type CaseResult, type RunOptions } from "./core/runner.ts";
 export { render } from "./core/template.ts";
 export type { Assertion, CaseConfig, ProviderSpec, Spec, SpecConfig } from "./core/spec.ts";
+export {
+  annotateRegressions,
+  loadBaseline,
+  loadLastRun,
+  saveBaseline,
+  saveLastRun,
+  type StoredCase,
+} from "./core/store.ts";
 export {
   AnthropicProvider,
   ExecProvider,

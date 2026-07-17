@@ -49,3 +49,27 @@ test("llm-judge fails and surfaces the reason when verdict is FAIL", async () =>
   expect(r.pass).toBe(false);
   expect(r.message).toContain("too terse");
 });
+
+test("binary scorers report score 1 on pass and 0 on fail", async () => {
+  expect((await score({ contains: "x" }, "xyz", CTX)).score).toBe(1);
+  expect((await score({ contains: "x" }, "abc", CTX)).score).toBe(0);
+});
+
+test("llm-rate normalizes the rating to 0–1 and gates on min", async () => {
+  const pass = await score(
+    { "llm-rate": { rubric: "clarity", min: 0.8 } },
+    "out",
+    ctxReturning("90\nclear"),
+  );
+  expect(pass.pass).toBe(true);
+  expect(pass.score).toBeCloseTo(0.9);
+
+  const fail = await score(
+    { "llm-rate": { rubric: "clarity", min: 0.8 } },
+    "out",
+    ctxReturning("50\nmeh"),
+  );
+  expect(fail.pass).toBe(false);
+  expect(fail.score).toBeCloseTo(0.5);
+  expect(fail.message).toContain("0.50");
+});

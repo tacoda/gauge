@@ -9,11 +9,15 @@ export interface CaseResult {
   name?: string;
   /** True when the provider call succeeded and every assertion passed. */
   pass: boolean;
+  /** Mean of assertion scores (0–1); 1 for a case with no assertions. */
+  score: number;
   output?: string;
   latencyMs?: number;
   scores: ScoreResult[];
   /** Set when the run errored before assertions (bad provider, API error). */
   error?: string;
+  /** Set by baseline comparison when this case regressed. */
+  regression?: string;
 }
 
 export interface RunOptions {
@@ -28,6 +32,11 @@ interface RunCase {
   name?: string;
   vars: Record<string, unknown>;
   assert: Assertion[];
+}
+
+/** Mean of scores; 1 when there are no assertions (nothing to fail). */
+function mean(scores: number[]): number {
+  return scores.length === 0 ? 1 : scores.reduce((a, b) => a + b, 0) / scores.length;
 }
 
 /** Expand a spec into its cases (a single implicit case when `cases` is absent). */
@@ -54,12 +63,21 @@ async function runCase(
     const prompt = render(spec.prompt, rc.vars);
     const { output, latencyMs } = await provider.complete({ model, prompt });
     const scores = await Promise.all(rc.assert.map((a) => score(a, output, ctx)));
-    return { spec, name: rc.name, output, latencyMs, scores, pass: scores.every((s) => s.pass) };
+    return {
+      spec,
+      name: rc.name,
+      output,
+      latencyMs,
+      scores,
+      pass: scores.every((s) => s.pass),
+      score: mean(scores.map((s) => s.score)),
+    };
   } catch (err) {
     return {
       spec,
       name: rc.name,
       pass: false,
+      score: 0,
       scores: [],
       error: err instanceof Error ? err.message : String(err),
     };

@@ -56,8 +56,10 @@ Keys come from the environment: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`.
 | `contains: "x"` | output contains `x` |
 | `regex: "/x/i"` | output matches (bare pattern or `/pattern/flags`) |
 | `llm-judge: "rubric"` | a judge model grades the output PASS against the rubric |
+| `llm-rate: { rubric, min }` | a judge rates the output 0–1; passes at or above `min` |
 
 Judge model defaults to `openai/gpt-4o-mini`; override with `GAUGE_JUDGE`.
+Every case also gets a numeric `score` (0–1, mean of its assertion scores).
 
 ## Matrix (multiple cases per file)
 
@@ -83,12 +85,25 @@ Classify: {{input}}
 ## Reporters & CLI
 
 ```bash
-gauge run [paths...] [-r tty|json|junit] [-f <substring>]
+gauge run [paths...] [-r tty|json|junit] [-f <substring>] [-u]
 gauge watch [paths...]          # re-run on change
+gauge report                    # reprint the last run
 ```
 
 `tty` (default) · `json` (dashboards) · `junit` (CI). Exit code is non-zero if
 any eval fails. `--filter` keeps only specs whose path matches the substring.
+
+## Regression baselines
+
+```bash
+gauge run -u          # save this run as the baseline (.gauge/baseline.json)
+gauge run             # later runs compare against it
+```
+
+A case **regresses** — flagged and failing the run — when it was passing and now
+fails, when its score drops more than 0.05, or (for assertion-free cases) when
+its output changes. Every run is also saved to `.gauge/last-run.json` for
+`gauge report`. Add `.gauge/` to your `.gitignore`.
 
 ## Config & secrets
 
@@ -105,9 +120,10 @@ A `.env` file in the working dir is loaded automatically (API keys, `GAUGE_JUDGE
 
 ## Status
 
-Beta (`0.3.0`). Working: OpenAI/Anthropic/exec providers; equals/contains/regex/llm-judge
-scorers; tty/json/junit reporters; matrix cases; watch; config file. Roadmap to 1.0:
-snapshot regression, scores + thresholds, stable plugin API, caching.
+Beta (`0.4.0`). Working: OpenAI/Anthropic/exec providers; equals/contains/regex/llm-judge/llm-rate
+scorers; numeric scores; tty/json/junit reporters; matrix cases; watch; config file;
+regression baselines; `report`. Roadmap to 1.0: stable plugin API for custom
+providers/scorers, concurrency + rate-limit/retry, response caching, docs site.
 
 ## Development
 
