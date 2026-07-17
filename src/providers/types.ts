@@ -3,9 +3,16 @@ export interface CompletionRequest {
   prompt: string;
 }
 
+export interface Usage {
+  inputTokens: number;
+  outputTokens: number;
+}
+
 export interface CompletionResult {
   output: string;
   latencyMs: number;
+  /** Token usage when the provider reports it (native APIs do; exec does not). */
+  usage?: Usage;
 }
 
 export interface Provider {

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { init } from "./cli/init.ts";
 import { report } from "./cli/report.ts";
 import { run } from "./cli/run.ts";
 import { watch } from "./cli/watch.ts";
@@ -22,6 +23,9 @@ switch (cmd) {
   case "report":
     process.exit(await report());
     break;
+  case "init":
+    process.exit(await init());
+    break;
   default:
     console.log(
       [
@@ -30,6 +34,7 @@ switch (cmd) {
         "Usage: gauge <command> [paths...] [options]",
         "",
         "Commands:",
+        "  init          scaffold gauge.config.yaml + an example eval",
         "  run [paths]   run evals (defaults to discovering **/*.eval.{md,yaml,yml})",
         "  watch         re-run on change",
         "  report        reprint the last run",

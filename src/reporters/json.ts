@@ -9,6 +9,8 @@ export function reportJson(results: CaseResult[]): boolean {
     score: r.score,
     output: r.output,
     latencyMs: r.latencyMs,
+    usage: r.usage,
+    cost: r.cost,
     error: r.error,
     regression: r.regression,
     assertions: r.scores.map((s) => ({

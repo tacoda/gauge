@@ -17,20 +17,26 @@ export interface StoredCase {
   score: number;
   output?: string;
   latencyMs?: number;
+  cost?: number;
   error?: string;
   regression?: string;
   assertions: { label: string; pass: boolean; score: number; message: string }[];
 }
 
-interface BaselineEntry {
+export interface BaselineEntry {
   pass: boolean;
   score: number;
   output?: string;
 }
-type Baseline = Record<string, BaselineEntry>;
+export type Baseline = Record<string, BaselineEntry>;
+
+/** Stable key for a case: relative path + case name. */
+export function storedKey(c: { path: string; name?: string }): string {
+  return `${c.path}::${c.name ?? ""}`;
+}
 
 function key(cwd: string, r: CaseResult): string {
-  return `${relative(cwd, r.spec.path)}::${r.name ?? ""}`;
+  return storedKey({ path: relative(cwd, r.spec.path), name: r.name });
 }
 
 function toStored(cwd: string, r: CaseResult): StoredCase {
@@ -41,6 +47,7 @@ function toStored(cwd: string, r: CaseResult): StoredCase {
     score: r.score,
     output: r.output,
     latencyMs: r.latencyMs,
+    cost: r.cost,
     error: r.error,
     regression: r.regression,
     assertions: r.scores.map((s) => ({

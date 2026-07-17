@@ -1,12 +1,18 @@
 import type { ProviderSpec } from "../core/spec.ts";
 import { AnthropicProvider } from "./anthropic.ts";
+import { AzureOpenAIProvider } from "./azure.ts";
 import { ExecProvider } from "./exec.ts";
+import { GoogleProvider } from "./google.ts";
+import { OllamaProvider } from "./ollama.ts";
 import { OpenAIProvider } from "./openai.ts";
 import type { Provider } from "./types.ts";
 
-export type { CompletionRequest, CompletionResult, Provider } from "./types.ts";
+export type { CompletionRequest, CompletionResult, Provider, Usage } from "./types.ts";
 export { AnthropicProvider } from "./anthropic.ts";
+export { AzureOpenAIProvider } from "./azure.ts";
 export { ExecProvider } from "./exec.ts";
+export { GoogleProvider } from "./google.ts";
+export { OllamaProvider } from "./ollama.ts";
 export { OpenAIProvider } from "./openai.ts";
 
 export interface ResolvedProvider {
@@ -20,6 +26,9 @@ export type Resolver = (spec: ProviderSpec) => ResolvedProvider;
 const VENDORS: Record<string, () => Provider> = {
   openai: () => new OpenAIProvider(),
   anthropic: () => new AnthropicProvider(),
+  google: () => new GoogleProvider(),
+  ollama: () => new OllamaProvider(),
+  azure: () => new AzureOpenAIProvider(),
 };
 
 /**

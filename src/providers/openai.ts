@@ -5,6 +5,7 @@ const ENDPOINT = "https://api.openai.com/v1/chat/completions";
 
 interface OpenAIChatResponse {
   choices?: { message?: { content?: string } }[];
+  usage?: { prompt_tokens?: number; completion_tokens?: number };
   error?: { message?: string };
 }
 
@@ -40,6 +41,13 @@ export class OpenAIProvider implements Provider {
     if (output == null) {
       throw new Error("openai response contained no message content");
     }
-    return { output, latencyMs };
+    return {
+      output,
+      latencyMs,
+      usage: {
+        inputTokens: body.usage?.prompt_tokens ?? 0,
+        outputTokens: body.usage?.completion_tokens ?? 0,
+      },
+    };
   }
 }

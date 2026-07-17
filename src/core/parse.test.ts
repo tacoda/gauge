@@ -62,7 +62,15 @@ test("throws on invalid config (missing provider)", () => {
   expect(() => parseSpec("x.eval.md", "---\nvars: {}\n---\nhi")).toThrow(SpecError);
 });
 
-test("rejects unknown assertion keys", () => {
+test("accepts unknown assertion keys at parse time (validated when run)", () => {
+  // Custom scorers are validated at run time, so parsing a single-key
+  // assertion always succeeds regardless of the key.
   const raw = "---\nprovider: openai/gpt-4o\nassert:\n  - bogus: x\n---\nhi";
+  const spec = parseSpec("x.eval.md", raw);
+  expect(spec.config.assert).toEqual([{ bogus: "x" }]);
+});
+
+test("rejects an assertion with more than one key", () => {
+  const raw = "---\nprovider: openai/gpt-4o\nassert:\n  - contains: a\n    equals: b\n---\nhi";
   expect(() => parseSpec("x.eval.md", raw)).toThrow(SpecError);
 });

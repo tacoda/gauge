@@ -10,19 +10,15 @@ export const ProviderSpecSchema = z.union([
 ]);
 export type ProviderSpec = z.infer<typeof ProviderSpecSchema>;
 
-// An assertion is a single-key object naming a scorer.
-export const AssertionSchema = z.union([
-  z.object({ equals: z.string() }).strict(),
-  z.object({ contains: z.string() }).strict(),
-  z.object({ regex: z.string() }).strict(),
-  z.object({ "llm-judge": z.string().min(1) }).strict(),
-  // Judge rates the output 0–1 against the rubric; passes at or above `min`.
-  z
-    .object({
-      "llm-rate": z.object({ rubric: z.string().min(1), min: z.number().min(0).max(1) }).strict(),
-    })
-    .strict(),
-]);
+// An assertion is a single-key object naming a scorer (built-in or registered
+// via registerScorer). The key selects the scorer; the value is scorer-specific
+// and validated by the scorer at run time, so custom scorers work without a
+// schema change here.
+export const AssertionSchema = z
+  .record(z.string(), z.unknown())
+  .refine((o) => Object.keys(o).length === 1, {
+    message: "an assertion must have exactly one key",
+  });
 export type Assertion = z.infer<typeof AssertionSchema>;
 
 // A case overrides/extends the spec-level vars and assertions. Case vars merge

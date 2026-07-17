@@ -1,6 +1,6 @@
 // gauge-eval public library API.
 
-export const VERSION = "1.0.0";
+export const VERSION = "1.1.0";
 
 export { type Config, loadConfig, loadEnv } from "./config.ts";
 export { parseSpec, SpecError } from "./core/parse.ts";
@@ -9,16 +9,22 @@ export { render } from "./core/template.ts";
 export type { Assertion, CaseConfig, ProviderSpec, Spec, SpecConfig } from "./core/spec.ts";
 export {
   annotateRegressions,
+  type Baseline,
+  type BaselineEntry,
   loadBaseline,
   loadLastRun,
   saveBaseline,
   saveLastRun,
+  storedKey,
   type StoredCase,
 } from "./core/store.ts";
 export { CacheProvider } from "./core/cache.ts";
 export {
   AnthropicProvider,
+  AzureOpenAIProvider,
   ExecProvider,
+  GoogleProvider,
+  OllamaProvider,
   OpenAIProvider,
   registerProvider,
   resolveProvider,
@@ -27,6 +33,16 @@ export {
   type Provider,
   type ResolvedProvider,
   type Resolver,
+  type Usage,
 } from "./providers/index.ts";
+export { cosine, embed } from "./providers/embeddings.ts";
 export { postJson, type HttpResult, type PostOptions } from "./providers/http.ts";
-export { score, type ScoreContext, type ScoreResult } from "./scorers/index.ts";
+export { estimateCost } from "./providers/pricing.ts";
+export {
+  registerScorer,
+  score,
+  scorerNames,
+  type ScoreContext,
+  type ScorerFn,
+  type ScoreResult,
+} from "./scorers/index.ts";

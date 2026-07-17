@@ -1,6 +1,6 @@
 {
   "name": "gauge-eval",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A test framework for LLM prompts. Write evals in Markdown, run them like tests.",
   "type": "module",
   "bin": {
@@ -44,6 +44,7 @@
   },
   "trustedDependencies": ["@biomejs/biome"],
   "dependencies": {
+    "ajv": "^8.20.0",
     "yaml": "^2.9.0",
     "zod": "^4.4.3"
   }

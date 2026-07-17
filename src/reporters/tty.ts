@@ -21,8 +21,12 @@ export function reportTty(results: CaseResult[], cwd = process.cwd()): boolean {
       continue;
     }
     const mark = r.pass ? color(GREEN, "✓") : color(RED, "✗");
-    const timing = r.latencyMs != null ? color(DIM, ` (${r.latencyMs}ms)`) : "";
-    console.log(`${mark} ${name}${timing}`);
+    const meta = [
+      r.latencyMs != null ? `${r.latencyMs}ms` : null,
+      r.cost != null ? `$${r.cost.toFixed(4)}` : null,
+    ].filter(Boolean);
+    const suffix = meta.length ? color(DIM, ` (${meta.join(", ")})`) : "";
+    console.log(`${mark} ${name}${suffix}`);
     if (r.regression) {
       console.log(`  ${color(YELLOW, "⚠ regression")} ${color(DIM, `— ${r.regression}`)}`);
     }
@@ -36,7 +40,9 @@ export function reportTty(results: CaseResult[], cwd = process.cwd()): boolean {
   }
   const passed = results.filter((r) => r.pass).length;
   const failed = results.length - passed;
+  const totalCost = results.reduce((sum, r) => sum + (r.cost ?? 0), 0);
   console.log("");
-  console.log(`${passed} passed, ${failed} failed, ${results.length} total`);
+  const cost = totalCost > 0 ? `, ~$${totalCost.toFixed(4)}` : "";
+  console.log(`${passed} passed, ${failed} failed, ${results.length} total${cost}`);
   return failed === 0;
 }

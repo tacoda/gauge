@@ -7,6 +7,7 @@ const MAX_TOKENS = 1024;
 
 interface AnthropicResponse {
   content?: { type: string; text?: string }[];
+  usage?: { input_tokens?: number; output_tokens?: number };
   error?: { message?: string };
 }
 
@@ -50,6 +51,13 @@ export class AnthropicProvider implements Provider {
     if (output == null) {
       throw new Error("anthropic response contained no text content");
     }
-    return { output, latencyMs };
+    return {
+      output,
+      latencyMs,
+      usage: {
+        inputTokens: body.usage?.input_tokens ?? 0,
+        outputTokens: body.usage?.output_tokens ?? 0,
+      },
+    };
   }
 }

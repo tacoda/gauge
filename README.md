@@ -41,12 +41,18 @@ Discovery: `**/*.eval.md` and `**/*.eval.yaml`.
 ```yaml
 provider: openai/gpt-4o-mini          # vendor/model shorthand
 provider: anthropic/claude-opus-4-8
+provider: google/gemini-1.5-flash
+provider: ollama/llama3               # local, no key
+provider: azure/my-deployment         # deployment name as the model
 provider:                             # object form
   type: exec                          # shell out — any language harness
   command: "python my_harness.py"     # prompt on stdin, output on stdout
 ```
 
-Keys come from the environment: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`.
+Keys come from the environment: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`,
+`GEMINI_API_KEY`, `AZURE_OPENAI_ENDPOINT` + `AZURE_OPENAI_API_KEY`. Ollama uses
+`OLLAMA_HOST` (default `http://localhost:11434`). Native providers report token
+usage, and gauge estimates per-run cost from a built-in price table.
 
 ## Assertions
 
@@ -57,6 +63,8 @@ Keys come from the environment: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`.
 | `regex: "/x/i"` | output matches (bare pattern or `/pattern/flags`) |
 | `llm-judge: "rubric"` | a judge model grades the output PASS against the rubric |
 | `llm-rate: { rubric, min }` | a judge rates the output 0–1; passes at or above `min` |
+| `json-schema: {…}` | output parses as JSON and validates against the schema |
+| `similarity: { reference, min }` | embedding cosine of output vs `reference` ≥ `min` |
 
 Judge model defaults to `openai/gpt-4o-mini`; override with `GAUGE_JUDGE`.
 Every case also gets a numeric `score` (0–1, mean of its assertion scores).
@@ -85,9 +93,10 @@ Classify: {{input}}
 ## Reporters & CLI
 
 ```bash
+gauge init                      # scaffold gauge.config.yaml + an example eval
 gauge run [paths...] [-r tty|json|junit] [-f <substring>] [-u] [-c <n>] [--cache]
 gauge watch [paths...]          # re-run on change
-gauge report                    # reprint the last run
+gauge report                    # reprint the last run (with cost + baseline diffs)
 ```
 
 Cases run with bounded concurrency (`-c`, default 5). `--cache` stores provider
@@ -137,6 +146,24 @@ registerProvider("myllm", () => ({
 
 Then reference it in a spec: `provider: myllm/some-model`.
 
+Custom scorers register the same way — the key you pick becomes the assertion name:
+
+```ts
+import { registerScorer } from "gauge-eval";
+
+registerScorer("word-count-under", (value, output) => {
+  const limit = value as number;
+  const n = output.split(/\s+/).filter(Boolean).length;
+  return { pass: n <= limit, score: n <= limit ? 1 : 0,
+    label: `word-count-under ${limit}`, message: n <= limit ? "" : `${n} words` };
+});
+```
+
+```yaml
+assert:
+  - word-count-under: 50
+```
+
 ## Config reference
 
 ```yaml
@@ -150,10 +177,12 @@ cache: false
 
 ## Status
 
-Stable (`1.0.0`). OpenAI/Anthropic/exec providers + custom-provider plugin API;
-equals/contains/regex/llm-judge/llm-rate scorers; numeric scores; tty/json/junit
-reporters; matrix cases; watch; config file; regression baselines; `report`;
-bounded concurrency; automatic retry on transient API errors; response caching.
+Stable (`1.1.0`). Providers: OpenAI, Anthropic, Google Gemini, Ollama, Azure OpenAI,
+exec — plus custom-provider and custom-scorer plugin APIs. Scorers:
+equals/contains/regex/llm-judge/llm-rate/json-schema/similarity, with numeric scores.
+tty/json/junit reporters; token usage + cost estimation; matrix cases; watch; config;
+regression baselines with output diffs; `init` and `report`; bounded concurrency;
+automatic retry on transient API errors; response caching.
 
 ## Development
 

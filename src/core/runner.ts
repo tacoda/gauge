@@ -1,4 +1,6 @@
 import { type Resolver, resolveProvider } from "../providers/index.ts";
+import { estimateCost } from "../providers/pricing.ts";
+import type { Usage } from "../providers/types.ts";
 import { type ScoreContext, type ScoreResult, score } from "../scorers/index.ts";
 import { CacheProvider } from "./cache.ts";
 import type { Assertion, Spec } from "./spec.ts";
@@ -14,6 +16,10 @@ export interface CaseResult {
   score: number;
   output?: string;
   latencyMs?: number;
+  /** Token usage for the main completion, when the provider reports it. */
+  usage?: Usage;
+  /** Estimated USD cost for the main completion, when the model price is known. */
+  cost?: number;
   scores: ScoreResult[];
   /** Set when the run errored before assertions (bad provider, API error). */
   error?: string;
@@ -67,13 +73,15 @@ async function runCase(
   try {
     const { provider, model } = resolve(spec.config.provider);
     const prompt = render(spec.prompt, rc.vars);
-    const { output, latencyMs } = await provider.complete({ model, prompt });
+    const { output, latencyMs, usage } = await provider.complete({ model, prompt });
     const scores = await Promise.all(rc.assert.map((a) => score(a, output, ctx)));
     return {
       spec,
       name: rc.name,
       output,
       latencyMs,
+      usage,
+      cost: estimateCost(model, usage),
       scores,
       pass: scores.every((s) => s.pass),
       score: mean(scores.map((s) => s.score)),

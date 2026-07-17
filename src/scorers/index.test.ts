@@ -55,6 +55,23 @@ test("binary scorers report score 1 on pass and 0 on fail", async () => {
   expect((await score({ contains: "x" }, "abc", CTX)).score).toBe(0);
 });
 
+test("unknown assertion key throws listing known scorers", async () => {
+  await expect(score({ bogus: "x" }, "out", CTX)).rejects.toThrow(/unknown assertion "bogus"/);
+});
+
+test("assertion with multiple keys throws", async () => {
+  await expect(score({ a: 1, b: 2 }, "out", CTX)).rejects.toThrow(/exactly one key/);
+});
+
+test("json-schema passes valid JSON and fails invalid", async () => {
+  const schema = { type: "object", required: ["ok"], properties: { ok: { type: "boolean" } } };
+  expect((await score({ "json-schema": schema }, '{"ok":true}', CTX)).pass).toBe(true);
+  expect((await score({ "json-schema": schema }, '{"ok":"nope"}', CTX)).pass).toBe(false);
+  expect((await score({ "json-schema": schema }, "not json", CTX)).message).toContain(
+    "not valid JSON",
+  );
+});
+
 test("llm-rate normalizes the rating to 0–1 and gates on min", async () => {
   const pass = await score(
     { "llm-rate": { rubric: "clarity", min: 0.8 } },
