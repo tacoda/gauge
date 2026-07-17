@@ -228,7 +228,7 @@ cache: false
 
 ## Status
 
-Stable (`1.1.0`). Providers: OpenAI, Anthropic, Google Gemini, Mistral, GLM (Zhipu),
+Stable (`1.2.0`). Providers: OpenAI, Anthropic, Google Gemini, Mistral, GLM (Zhipu),
 Hugging Face router, OpenRouter, Ollama, Azure OpenAI, exec, and a generic
 `openai-compat` object form for any OpenAI-compatible host — plus custom-provider
 and custom-scorer plugin APIs. Scorers:

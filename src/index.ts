@@ -1,6 +1,6 @@
 // gauge-eval public library API.
 
-export const VERSION = "1.1.0";
+export const VERSION = "1.2.0";
 
 export { type Config, loadConfig, loadEnv } from "./config.ts";
 export { parseSpec, SpecError } from "./core/parse.ts";
