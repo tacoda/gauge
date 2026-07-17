@@ -166,7 +166,7 @@
     <div class="brand">
       <span class="logo">🎯</span>
       <h1>gauge</h1>
-      <span class="ver">v1.1</span>
+      <span class="ver">v1.2</span>
     </div>
     <p class="tagline">A test framework for LLM prompts.</p>
     <nav class="toc" id="toc">
@@ -195,7 +195,7 @@
     <!-- HOME -->
     <section class="route" id="home">
       <div class="hero">
-        <span class="badge">🎯 gauge-eval · MIT · Bun + TypeScript</span>
+        <span class="badge">🎯 gauge-eval v1.2.0 · MIT · Bun + TypeScript</span>
         <h2>Test your prompts <span class="grad">like you test your code.</span></h2>
         <p class="lead">Prompts drift. Harnesses and the tooling around them break in ways unit tests never catch.
         <b>gauge</b> treats prompt evaluation like a test suite — declarative specs, a runner, assertions,
@@ -228,11 +228,12 @@
       <h3>Why gauge</h3>
       <div class="grid">
         <div class="card"><h4><span class="ic b">📝</span>Specs, not scripts</h4><p>Evals are Markdown files with YAML frontmatter. The prompt is the body. No glue code, no framework lock-in.</p></div>
+        <div class="card"><h4><span class="ic g">🎬</span>Given / When / Then</h4><p>A <code>scenario</code> sets up the world — agent <code>system</code> prompt and shared context. The prompt is the action, assertions are the expectations.</p></div>
         <div class="card"><h4><span class="ic g">🌐</span>Language-agnostic</h4><p>The <code>exec</code> provider shells out to any harness — Python, Go, Rust — over stdin/stdout.</p></div>
         <div class="card"><h4><span class="ic b">⚖️</span>Real scoring</h4><p>Exact match, regex, JSON-schema, embedding similarity, LLM-as-judge, 0–1 rated thresholds.</p></div>
         <div class="card"><h4><span class="ic r">📉</span>Regression baselines</h4><p>Snapshot a passing run. Later runs flag anything that regressed — and fail the build.</p></div>
         <div class="card"><h4><span class="ic g">⚡</span>Fast &amp; cheap</h4><p>Bounded concurrency, automatic retries, opt-in response caching.</p></div>
-        <div class="card"><h4><span class="ic b">🔌</span>Extensible</h4><p>OpenAI, Anthropic, Gemini, Ollama, Azure built in. Register custom providers and scorers with one function.</p></div>
+        <div class="card"><h4><span class="ic b">🔌</span>Extensible</h4><p>OpenAI, Anthropic, Gemini, Mistral, GLM, Hugging Face, OpenRouter, Ollama, Azure built in — plus a generic OpenAI-compatible adapter. Register custom providers and scorers with one function.</p></div>
       </div>
     </section>
 
@@ -251,15 +252,17 @@ export ANTHROPIC_API_KEY=sk-ant-...</pre>
       <p>Create <code class="inline">evals/router.eval.md</code>. Frontmatter is config; the body is the prompt.</p>
 <pre><span class="p">---</span>
 <span class="k">provider:</span> <span class="s">openai/gpt-4o-mini</span>
-<span class="k">vars:</span>
-  <span class="k">input:</span> <span class="s">"I forgot my password"</span>
+<span class="c"># scenario = the setup (BDD "Given"): the agent + shared context</span>
+<span class="k">scenario:</span>
+  <span class="k">system:</span> <span class="s">|</span>
+    <span class="s">You are a support router. Reply with one lowercase category slug</span>
+    <span class="s">(auth, billing, technical, other). No punctuation.</span>
+  <span class="k">vars:</span>
+    <span class="k">input:</span> <span class="s">"I forgot my password"</span>
 <span class="k">assert:</span>
   - <span class="k">contains:</span> <span class="s">"auth"</span>
   - <span class="k">llm-judge:</span> <span class="s">"Routes correctly without asking a clarifying question"</span>
 <span class="p">---</span>
-
-You are a support router. Reply with one lowercase category slug
-(auth, billing, technical, other). No punctuation.
 
 User request: {{input}}</pre>
 
@@ -313,8 +316,13 @@ Explain {{topic}} to a 10-year-old in two sentences.</pre>
         <tr><td><span class="chip blue">openai</span></td><td><code>openai/gpt-4o-mini</code></td><td>Reads <code>OPENAI_API_KEY</code></td></tr>
         <tr><td><span class="chip blue">anthropic</span></td><td><code>anthropic/claude-opus-4-8</code></td><td>Reads <code>ANTHROPIC_API_KEY</code></td></tr>
         <tr><td><span class="chip blue">google</span></td><td><code>google/gemini-1.5-flash</code></td><td>Reads <code>GEMINI_API_KEY</code></td></tr>
+        <tr><td><span class="chip blue">mistral</span></td><td><code>mistral/mistral-large-latest</code></td><td>Reads <code>MISTRAL_API_KEY</code></td></tr>
+        <tr><td><span class="chip blue">glm</span></td><td><code>glm/glm-4.6</code></td><td>Zhipu / Z.AI · <code>GLM_API_KEY</code> · <code>GLM_BASE_URL</code> for CN</td></tr>
+        <tr><td><span class="chip blue">huggingface</span></td><td><code>hf/meta-llama/Llama-3.3-70B-Instruct</code></td><td>Router for OSS models · <code>HF_TOKEN</code></td></tr>
+        <tr><td><span class="chip blue">openrouter</span></td><td><code>openrouter/anthropic/claude-3.5-sonnet</code></td><td>Gateway to many vendors · <code>OPENROUTER_API_KEY</code></td></tr>
         <tr><td><span class="chip green">ollama</span></td><td><code>ollama/llama3</code></td><td>Local, no key · <code>OLLAMA_HOST</code></td></tr>
         <tr><td><span class="chip blue">azure</span></td><td><code>azure/my-deployment</code></td><td><code>AZURE_OPENAI_ENDPOINT</code> + <code>_API_KEY</code></td></tr>
+        <tr><td><span class="chip green">openai-compat</span></td><td>object form ↓</td><td>Any OpenAI-compatible host — DeepSeek, Groq, Together, …</td></tr>
         <tr><td><span class="chip green">exec</span></td><td>object form ↓</td><td>Shell out to any harness</td></tr>
       </table>
       <div class="note">Native providers report token usage, and gauge estimates per-run <b>cost</b> from a built-in price table — shown in the tty and JSON reporters and in <code class="inline">gauge report</code>. Override prices with the <code class="inline">GAUGE_PRICING</code> env var.</div>
@@ -331,6 +339,14 @@ Explain {{topic}} to a 10-year-old in two sentences.</pre>
 
 Find me flights to Lisbon under $600.</pre>
       <div class="note">Because <code class="inline">exec</code> speaks stdin/stdout, the same eval suite works whether your agent is in Python, Go, Rust, or a shell script. The contract is the prompt and the output — never the implementation.</div>
+
+      <h3>Any OpenAI-compatible host</h3>
+      <p>Most vendors speak the OpenAI chat API. Point the <code class="inline">openai-compat</code> object form at any base URL and name the env var holding the key — DeepSeek, Groq, Together, Fireworks, and more, without waiting for a built-in shorthand.</p>
+<pre><span class="k">provider:</span>
+  <span class="k">type:</span> <span class="s">openai-compat</span>
+  <span class="k">baseUrl:</span> <span class="s">https://api.deepseek.com/v1</span>
+  <span class="k">model:</span> <span class="s">deepseek-chat</span>
+  <span class="k">apiKeyEnv:</span> <span class="s">DEEPSEEK_API_KEY</span></pre>
 
       <div class="pager"><a href="#format">← Eval format</a><a href="#assertions">Assertions →</a></div>
     </section>
@@ -422,12 +438,12 @@ Classify the request into one category slug: {{input}}</pre>
       <h2>CLI &amp; reporters</h2>
       <p class="lead">A few commands, a handful of flags, exit codes that mean something.</p>
 <pre><span class="prompt">$</span> gauge init                    <span class="c"># scaffold gauge.config.yaml + example eval</span>
-<span class="prompt">$</span> gauge run [paths...] <span class="p">[-r tty|json|junit] [-f &lt;substr&gt;] [-u] [-c &lt;n&gt;] [--cache]</span>
+<span class="prompt">$</span> gauge run [paths...] <span class="p">[-r tty|json|junit|html] [-f &lt;substr&gt;] [-u] [-c &lt;n&gt;] [--cache]</span>
 <span class="prompt">$</span> gauge watch [paths...]        <span class="c"># re-run on change</span>
 <span class="prompt">$</span> gauge report                  <span class="c"># reprint last run — with cost + baseline diffs</span></pre>
       <table>
         <tr><th>Flag</th><th>Effect</th></tr>
-        <tr><td><code>-r, --reporter</code></td><td><span class="chip blue">tty</span> (default) · <code>json</code> · <code>junit</code></td></tr>
+        <tr><td><code>-r, --reporter</code></td><td><span class="chip blue">tty</span> (default) · <code>json</code> · <code>junit</code> · <code>html</code></td></tr>
         <tr><td><code>-f, --filter</code></td><td>keep only specs whose path matches the substring</td></tr>
         <tr><td><code>-u, --update-baseline</code></td><td>save this run as the regression baseline</td></tr>
         <tr><td><code>-c, --concurrency</code></td><td>max cases in parallel (default 5)</td></tr>
@@ -438,6 +454,7 @@ Classify the request into one category slug: {{input}}</pre>
         <div class="card"><h4><span class="ic b">🖥️</span>tty</h4><p>Colorized pass/fail for humans. The default.</p></div>
         <div class="card"><h4><span class="ic g">{ }</span>json</h4><p>Machine-readable — pipe into dashboards or scripts.</p></div>
         <div class="card"><h4><span class="ic r">CI</span>junit</h4><p>JUnit XML for GitHub Actions, GitLab, Jenkins, and friends.</p></div>
+        <div class="card"><h4><span class="ic b">🌐</span>html</h4><p>One self-contained page — inline styles, no external assets, light/dark aware. <code class="inline">gauge run -r html &gt; report.html</code>.</p></div>
       </div>
       <div class="pager"><a href="#matrix">← Matrix cases</a><a href="#baselines">Regression baselines →</a></div>
     </section>
@@ -472,7 +489,7 @@ Classify the request into one category slug: {{input}}</pre>
       <h2>Config &amp; caching</h2>
       <p class="lead">Optional <code class="inline">gauge.config.yaml</code> in the working directory sets defaults. CLI flags always win.</p>
 <pre><span class="k">paths:</span> [<span class="s">evals</span>]
-<span class="k">reporter:</span> <span class="s">tty</span>           <span class="c"># tty | json | junit</span>
+<span class="k">reporter:</span> <span class="s">tty</span>           <span class="c"># tty | json | junit | html</span>
 <span class="k">judge:</span> <span class="s">openai/gpt-4o-mini</span>
 <span class="k">filter:</span> <span class="s">""</span>
 <span class="k">concurrency:</span> <span class="s">5</span>
