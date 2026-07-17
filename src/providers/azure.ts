@@ -1,4 +1,4 @@
-import { postJson } from "./http.ts";
+import { chatMessages, postJson } from "./http.ts";
 import type { CompletionRequest, CompletionResult, Provider } from "./types.ts";
 
 const DEFAULT_API_VERSION = process.env.AZURE_OPENAI_API_VERSION ?? "2024-10-21";
@@ -31,7 +31,7 @@ export class AzureOpenAIProvider implements Provider {
     const res = await postJson(
       url,
       { "content-type": "application/json", "api-key": this.apiKey },
-      { messages: [{ role: "user", content: req.prompt }] },
+      { messages: chatMessages(req) },
       { fetchImpl: this.fetchImpl },
     );
     const latencyMs = Math.round(performance.now() - start);

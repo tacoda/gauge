@@ -1,6 +1,8 @@
 export interface CompletionRequest {
   model: string;
   prompt: string;
+  /** Scenario setup: the system / agent instruction sent as the system role. */
+  system?: string;
 }
 
 export interface Usage {

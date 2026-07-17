@@ -17,6 +17,21 @@ Say {{input}} world`;
   expect(spec.prompt).toBe("Say {{input}} world");
 });
 
+test("parses a scenario block (system + vars)", () => {
+  const raw = `---
+provider: openai/gpt-4o
+scenario:
+  system: You are a router.
+  vars: { queues: "auth, billing" }
+assert:
+  - contains: auth
+---
+Classify: {{input}}`;
+  const spec = parseSpec("x.eval.md", raw);
+  expect(spec.config.scenario?.system).toBe("You are a router.");
+  expect(spec.config.scenario?.vars).toEqual({ queues: "auth, billing" });
+});
+
 test("markdown defaults vars and assert when omitted", () => {
   const spec = parseSpec("x.eval.md", "---\nprovider: openai/gpt-4o\n---\nhi");
   expect(spec.config.vars).toEqual({});

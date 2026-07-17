@@ -29,6 +29,8 @@ export class CacheProvider implements Provider {
   }
 
   private key(req: CompletionRequest): string {
-    return createHash("sha256").update(`${this.vendor}\0${req.model}\0${req.prompt}`).digest("hex");
+    return createHash("sha256")
+      .update(`${this.vendor}\0${req.model}\0${req.system ?? ""}\0${req.prompt}`)
+      .digest("hex");
   }
 }

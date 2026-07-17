@@ -32,6 +32,18 @@ test("sends model + message and parses text content", async () => {
   expect(body.messages).toEqual([{ role: "user", content: "hi" }]);
 });
 
+test("sends a top-level system field when the scenario set one", async () => {
+  const capture: Capture = {};
+  const p = new AnthropicProvider(
+    "sk-test",
+    mockFetch({ content: [{ type: "text", text: "ok" }] }, capture),
+  );
+  await p.complete({ model: "claude-x", prompt: "hi", system: "be terse" });
+  const body = JSON.parse(capture.init?.body as string);
+  expect(body.system).toBe("be terse");
+  expect(body.messages).toEqual([{ role: "user", content: "hi" }]);
+});
+
 test("throws on API error status", async () => {
   const p = new AnthropicProvider(
     "sk-test",

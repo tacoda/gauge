@@ -38,6 +38,7 @@ export class AnthropicProvider implements Provider {
       {
         model: req.model,
         max_tokens: MAX_TOKENS,
+        ...(req.system ? { system: req.system } : {}),
         messages: [{ role: "user", content: req.prompt }],
       },
       { fetchImpl: this.fetchImpl },

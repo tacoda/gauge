@@ -65,6 +65,34 @@ test("matrix: expands cases, merging base vars and appending base asserts", asyn
   expect(results[1]?.scores.length).toBe(1); // only base assert
 });
 
+test("scenario: sends system (rendered with vars) and merges scenario vars as base", async () => {
+  let seenSystem: string | undefined;
+  const resolve: Resolver = () => ({
+    model: "fake",
+    provider: {
+      vendor: "fake",
+      complete: async ({ prompt, system }) => {
+        seenSystem = system;
+        return { output: prompt, latencyMs: 1 };
+      },
+    },
+  });
+  const scenarioSpec: Spec = {
+    path: "s.eval.md",
+    prompt: "{{topic}}",
+    config: {
+      provider: "fake/fake",
+      scenario: { system: "You are a {{role}}.", vars: { role: "router", topic: "base" } },
+      vars: {},
+      assert: [{ contains: "base" }],
+    },
+  };
+  const [r] = await runSpec(scenarioSpec, { resolve });
+  expect(r?.pass).toBe(true);
+  expect(seenSystem).toBe("You are a router."); // system rendered with scenario vars
+  expect(r?.output).toBe("base"); // scenario var reached the prompt
+});
+
 test("runAll preserves order and bounds concurrency", async () => {
   let inFlight = 0;
   let peak = 0;

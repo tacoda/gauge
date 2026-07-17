@@ -44,6 +44,8 @@ interface RunCase {
   name?: string;
   vars: Record<string, unknown>;
   assert: Assertion[];
+  /** Scenario system instruction, rendered per case with the case's vars. */
+  system?: string;
 }
 
 /** Mean of scores; 1 when there are no assertions (nothing to fail). */
@@ -53,14 +55,18 @@ function mean(scores: number[]): number {
 
 /** Expand a spec into its cases (a single implicit case when `cases` is absent). */
 function expand(spec: Spec): RunCase[] {
-  const { vars, assert, cases } = spec.config;
+  const { scenario, vars, assert, cases } = spec.config;
+  // Scenario vars are the base layer; spec vars merge over them, case vars last.
+  const base = { ...scenario?.vars, ...vars };
+  const system = scenario?.system;
   if (!cases || cases.length === 0) {
-    return [{ vars, assert }];
+    return [{ vars: base, assert, system }];
   }
   return cases.map((c, i) => ({
     name: c.name ?? `case ${i + 1}`,
-    vars: { ...vars, ...c.vars },
+    vars: { ...base, ...c.vars },
     assert: [...assert, ...c.assert],
+    system,
   }));
 }
 
@@ -73,7 +79,8 @@ async function runCase(
   try {
     const { provider, model } = resolve(spec.config.provider);
     const prompt = render(spec.prompt, rc.vars);
-    const { output, latencyMs, usage } = await provider.complete({ model, prompt });
+    const system = rc.system ? render(rc.system, rc.vars) : undefined;
+    const { output, latencyMs, usage } = await provider.complete({ model, prompt, system });
     const scores = await Promise.all(rc.assert.map((a) => score(a, output, ctx)));
     return {
       spec,

@@ -41,3 +41,12 @@ test("different prompt misses the cache", async () => {
   await cached.complete({ model: "m", prompt: "b" });
   expect(inner.calls).toBe(2);
 });
+
+test("different system prompt misses the cache", async () => {
+  const cwd = await mkdtemp(join(tmpdir(), "gauge-cache-"));
+  const inner = countingProvider();
+  const cached = new CacheProvider(inner, cwd);
+  await cached.complete({ model: "m", prompt: "hi" });
+  await cached.complete({ model: "m", prompt: "hi", system: "be terse" });
+  expect(inner.calls).toBe(2);
+});

@@ -6,7 +6,14 @@ export { type Config, loadConfig, loadEnv } from "./config.ts";
 export { parseSpec, SpecError } from "./core/parse.ts";
 export { runAll, runSpec, type CaseResult, type RunOptions } from "./core/runner.ts";
 export { render } from "./core/template.ts";
-export type { Assertion, CaseConfig, ProviderSpec, Spec, SpecConfig } from "./core/spec.ts";
+export type {
+  Assertion,
+  CaseConfig,
+  ProviderSpec,
+  ScenarioConfig,
+  Spec,
+  SpecConfig,
+} from "./core/spec.ts";
 export {
   annotateRegressions,
   type Baseline,

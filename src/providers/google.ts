@@ -26,7 +26,10 @@ export class GoogleProvider implements Provider {
     const res = await postJson(
       `${BASE}/${req.model}:generateContent`,
       { "content-type": "application/json", "x-goog-api-key": this.apiKey },
-      { contents: [{ parts: [{ text: req.prompt }] }] },
+      {
+        ...(req.system ? { systemInstruction: { parts: [{ text: req.system }] } } : {}),
+        contents: [{ parts: [{ text: req.prompt }] }],
+      },
       { fetchImpl: this.fetchImpl },
     );
     const latencyMs = Math.round(performance.now() - start);

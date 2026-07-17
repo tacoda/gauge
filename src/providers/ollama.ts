@@ -22,7 +22,12 @@ export class OllamaProvider implements Provider {
     const res = await postJson(
       `${this.host.replace(/\/$/, "")}/api/generate`,
       { "content-type": "application/json" },
-      { model: req.model, prompt: req.prompt, stream: false },
+      {
+        model: req.model,
+        prompt: req.prompt,
+        stream: false,
+        ...(req.system ? { system: req.system } : {}),
+      },
       { fetchImpl: this.fetchImpl },
     );
     const latencyMs = Math.round(performance.now() - start);

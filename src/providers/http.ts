@@ -1,3 +1,18 @@
+import type { CompletionRequest } from "./types.ts";
+
+export interface ChatMessage {
+  role: "system" | "user";
+  content: string;
+}
+
+/** OpenAI-style message list: a leading system message when the scenario set one. */
+export function chatMessages(req: CompletionRequest): ChatMessage[] {
+  const messages: ChatMessage[] = [];
+  if (req.system) messages.push({ role: "system", content: req.system });
+  messages.push({ role: "user", content: req.prompt });
+  return messages;
+}
+
 export interface HttpResult {
   ok: boolean;
   status: number;

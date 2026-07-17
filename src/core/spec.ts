@@ -21,6 +21,18 @@ export const AssertionSchema = z
   });
 export type Assertion = z.infer<typeof AssertionSchema>;
 
+// A scenario is the BDD "Given": it sets up the world before the prompt runs.
+// `system` becomes the model's system/agent instruction; `vars` form the base
+// layer that spec- and case-level vars merge over. Both are rendered with the
+// case's vars, so a scenario can reference {{...}} too.
+export const ScenarioSchema = z
+  .object({
+    system: z.string().optional(),
+    vars: z.record(z.string(), z.unknown()).default({}),
+  })
+  .strict();
+export type ScenarioConfig = z.infer<typeof ScenarioSchema>;
+
 // A case overrides/extends the spec-level vars and assertions. Case vars merge
 // over base vars; case assertions are appended to base assertions.
 export const CaseSchema = z
@@ -36,6 +48,7 @@ export type CaseConfig = z.infer<typeof CaseSchema>;
 // the spec-level vars/assert form a single implicit case.
 export const SpecSchema = z.object({
   provider: ProviderSpecSchema,
+  scenario: ScenarioSchema.optional(),
   vars: z.record(z.string(), z.unknown()).default({}),
   assert: z.array(AssertionSchema).default([]),
   cases: z.array(CaseSchema).optional(),

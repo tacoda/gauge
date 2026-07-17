@@ -7,6 +7,8 @@ import type { CompletionRequest, CompletionResult, Provider } from "./types.ts";
  * language-agnostic escape hatch — wrap any harness in any language.
  *
  * `model` carries the command string (from the provider object's `command`).
+ * A scenario `system` is passed as the GAUGE_SYSTEM env var (stdin stays the
+ * bare prompt), so the wrapped harness can consume it without parsing.
  */
 export class ExecProvider implements Provider {
   readonly vendor = "exec";
@@ -14,7 +16,8 @@ export class ExecProvider implements Provider {
   complete(req: CompletionRequest): Promise<CompletionResult> {
     const start = performance.now();
     return new Promise((resolve, reject) => {
-      const child = spawn(req.model, { shell: true });
+      const env = req.system ? { ...process.env, GAUGE_SYSTEM: req.system } : process.env;
+      const child = spawn(req.model, { shell: true, env });
       let stdout = "";
       let stderr = "";
       child.stdout.on("data", (d) => {

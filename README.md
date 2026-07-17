@@ -36,6 +36,32 @@ You are a router. Classify the user request: {{input}}
 
 Discovery: `**/*.eval.md` and `**/*.eval.yaml`.
 
+## Scenario (the setup step)
+
+Think BDD: the prompt body is the **When**, `assert` is the **Then**. A
+`scenario` is the **Given** — it sets up the world before the prompt runs.
+`system` becomes the model's system / agent instruction; `vars` are the base
+layer that spec- and case-level vars merge over. Both are rendered with the
+case's vars, so a scenario can interpolate `{{...}}` too.
+
+```markdown
+---
+provider: anthropic/claude-opus-4-8
+scenario:
+  system: You are a terse support router. Queues: {{queues}}.
+  vars:
+    queues: "auth, billing, other"
+assert:
+  - regex: "/^(auth|billing|other)$/"
+---
+Classify: {{input}}
+```
+
+Var precedence (last wins): `scenario.vars` → spec `vars` → case `vars`. The
+`system` reaches each provider natively (OpenAI/Azure system message, Anthropic
+top-level `system`, Gemini `systemInstruction`, Ollama `system`). The `exec`
+provider receives it as the `GAUGE_SYSTEM` env var (stdin stays the bare prompt).
+
 ## Providers
 
 ```yaml
