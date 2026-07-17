@@ -12,6 +12,10 @@ const ConfigSchema = z
     judge: z.string().optional(),
     /** Default substring filter on spec path / case name. */
     filter: z.string().optional(),
+    /** Max cases run in parallel. */
+    concurrency: z.number().int().positive().optional(),
+    /** Cache provider responses on disk under .gauge/cache. */
+    cache: z.boolean().optional(),
   })
   .strict();
 export type Config = z.infer<typeof ConfigSchema>;

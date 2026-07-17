@@ -16,12 +16,19 @@ export interface ResolvedProvider {
 
 export type Resolver = (spec: ProviderSpec) => ResolvedProvider;
 
-// vendor -> factory for the "vendor/model" string shorthand. Phase 5 opens
-// this up as a public plugin API.
+// vendor -> factory for the "vendor/model" string shorthand.
 const VENDORS: Record<string, () => Provider> = {
   openai: () => new OpenAIProvider(),
   anthropic: () => new AnthropicProvider(),
 };
+
+/**
+ * Register a custom provider vendor for the `vendor/model` shorthand. The
+ * plugin extension point for providers.
+ */
+export function registerProvider(vendor: string, factory: () => Provider): void {
+  VENDORS[vendor] = factory;
+}
 
 /** Resolve a provider spec (string shorthand or object form) into a provider + model. */
 export function resolveProvider(spec: ProviderSpec): ResolvedProvider {

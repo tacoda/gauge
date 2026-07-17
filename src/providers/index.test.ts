@@ -1,5 +1,11 @@
 import { expect, test } from "bun:test";
-import { AnthropicProvider, ExecProvider, OpenAIProvider, resolveProvider } from "./index.ts";
+import {
+  AnthropicProvider,
+  ExecProvider,
+  OpenAIProvider,
+  registerProvider,
+  resolveProvider,
+} from "./index.ts";
 
 test("resolves openai vendor + model (string form)", () => {
   const { provider, model } = resolveProvider("openai/gpt-4o-mini");
@@ -39,4 +45,14 @@ test("rejects unknown vendor", () => {
 
 test("rejects empty model", () => {
   expect(() => resolveProvider("openai/")).toThrow(/missing model/);
+});
+
+test("registerProvider adds a custom vendor", () => {
+  registerProvider("echo", () => ({
+    vendor: "echo",
+    complete: async ({ prompt }) => ({ output: prompt, latencyMs: 0 }),
+  }));
+  const { provider, model } = resolveProvider("echo/v1");
+  expect(provider.vendor).toBe("echo");
+  expect(model).toBe("v1");
 });

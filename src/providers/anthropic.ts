@@ -1,3 +1,4 @@
+import { postJson } from "./http.ts";
 import type { CompletionRequest, CompletionResult, Provider } from "./types.ts";
 
 const ENDPOINT = "https://api.anthropic.com/v1/messages";
@@ -26,21 +27,22 @@ export class AnthropicProvider implements Provider {
       throw new Error("ANTHROPIC_API_KEY is not set");
     }
     const start = performance.now();
-    const res = await this.fetchImpl(ENDPOINT, {
-      method: "POST",
-      headers: {
+    const res = await postJson(
+      ENDPOINT,
+      {
         "content-type": "application/json",
         "x-api-key": this.apiKey,
         "anthropic-version": API_VERSION,
       },
-      body: JSON.stringify({
+      {
         model: req.model,
         max_tokens: MAX_TOKENS,
         messages: [{ role: "user", content: req.prompt }],
-      }),
-    });
+      },
+      { fetchImpl: this.fetchImpl },
+    );
     const latencyMs = Math.round(performance.now() - start);
-    const body = (await res.json()) as AnthropicResponse;
+    const body = res.json as AnthropicResponse;
     if (!res.ok) {
       throw new Error(`anthropic ${res.status}: ${body.error?.message ?? "request failed"}`);
     }

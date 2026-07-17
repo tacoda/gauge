@@ -1,5 +1,6 @@
 import { type Resolver, resolveProvider } from "../providers/index.ts";
 import { type ScoreContext, type ScoreResult, score } from "../scorers/index.ts";
+import { CacheProvider } from "./cache.ts";
 import type { Assertion, Spec } from "./spec.ts";
 import { render } from "./template.ts";
 
@@ -24,9 +25,14 @@ export interface RunOptions {
   resolve?: Resolver;
   /** Provider spec for llm-judge assertions. */
   judge?: string;
+  /** Max cases run in parallel (default 5). */
+  concurrency?: number;
+  /** When set, cache provider responses on disk under this directory's .gauge/cache. */
+  cacheDir?: string;
 }
 
 const DEFAULT_JUDGE = process.env.GAUGE_JUDGE ?? "openai/gpt-4o-mini";
+const DEFAULT_CONCURRENCY = 5;
 
 interface RunCase {
   name?: string;
@@ -84,22 +90,50 @@ async function runCase(
   }
 }
 
-/** Run every case in a spec. */
-export async function runSpec(spec: Spec, opts: RunOptions = {}): Promise<CaseResult[]> {
-  const resolve = opts.resolve ?? resolveProvider;
-  const ctx: ScoreContext = { resolve, judge: opts.judge ?? DEFAULT_JUDGE };
-  const results: CaseResult[] = [];
-  for (const rc of expand(spec)) {
-    results.push(await runCase(spec, rc, resolve, ctx));
-  }
+/** Wrap a resolver so resolved providers cache responses on disk. */
+function withCache(resolve: Resolver, cacheDir?: string): Resolver {
+  if (!cacheDir) return resolve;
+  return (spec) => {
+    const { provider, model } = resolve(spec);
+    return { model, provider: new CacheProvider(provider, cacheDir) };
+  };
+}
+
+/** Run tasks with a bounded number in flight, preserving input order. */
+async function mapLimit<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i] as T);
+    }
+  };
+  const workers = Math.max(1, Math.min(limit, items.length));
+  await Promise.all(Array.from({ length: workers }, worker));
   return results;
 }
 
-/** Run many specs sequentially. Concurrency lands in Phase 5. */
+function contextFor(opts: RunOptions): { resolve: Resolver; ctx: ScoreContext } {
+  const resolve = withCache(opts.resolve ?? resolveProvider, opts.cacheDir);
+  return { resolve, ctx: { resolve, judge: opts.judge ?? DEFAULT_JUDGE } };
+}
+
+/** Run every case in a spec. */
+export async function runSpec(spec: Spec, opts: RunOptions = {}): Promise<CaseResult[]> {
+  const { resolve, ctx } = contextFor(opts);
+  const limit = opts.concurrency ?? DEFAULT_CONCURRENCY;
+  return mapLimit(expand(spec), limit, (rc) => runCase(spec, rc, resolve, ctx));
+}
+
+/** Run many specs, executing cases with bounded concurrency. */
 export async function runAll(specs: Spec[], opts: RunOptions = {}): Promise<CaseResult[]> {
-  const results: CaseResult[] = [];
-  for (const spec of specs) {
-    results.push(...(await runSpec(spec, opts)));
-  }
-  return results;
+  const { resolve, ctx } = contextFor(opts);
+  const limit = opts.concurrency ?? DEFAULT_CONCURRENCY;
+  const tasks = specs.flatMap((spec) => expand(spec).map((rc) => ({ spec, rc })));
+  return mapLimit(tasks, limit, ({ spec, rc }) => runCase(spec, rc, resolve, ctx));
 }

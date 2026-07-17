@@ -15,6 +15,8 @@ interface Args {
   filter?: string;
   /** Write current results as the new baseline instead of comparing. */
   updateBaseline?: boolean;
+  concurrency?: number;
+  cache?: boolean;
 }
 
 type Reporter = (results: CaseResult[], cwd: string) => boolean;
@@ -58,7 +60,12 @@ export async function runOnce(cwd: string, args: Args, config: Config): Promise<
     }
   }
 
-  const results = await runAll(specs, { judge: config.judge });
+  const cacheEnabled = args.cache ?? config.cache ?? false;
+  const results = await runAll(specs, {
+    judge: config.judge,
+    concurrency: args.concurrency ?? config.concurrency,
+    cacheDir: cacheEnabled ? cwd : undefined,
+  });
 
   if (args.updateBaseline) {
     await saveBaseline(cwd, results);
@@ -92,6 +99,14 @@ export function parseArgs(argv: string[]): Args {
       args.filter = arg.slice("--filter=".length);
     } else if (arg === "--update-baseline" || arg === "-u") {
       args.updateBaseline = true;
+    } else if (arg === "--concurrency" || arg === "-c") {
+      args.concurrency = Number(argv[++i]);
+    } else if (arg?.startsWith("--concurrency=")) {
+      args.concurrency = Number(arg.slice("--concurrency=".length));
+    } else if (arg === "--cache") {
+      args.cache = true;
+    } else if (arg === "--no-cache") {
+      args.cache = false;
     } else if (arg) {
       paths.push(arg);
     }

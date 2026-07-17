@@ -85,10 +85,14 @@ Classify: {{input}}
 ## Reporters & CLI
 
 ```bash
-gauge run [paths...] [-r tty|json|junit] [-f <substring>] [-u]
+gauge run [paths...] [-r tty|json|junit] [-f <substring>] [-u] [-c <n>] [--cache]
 gauge watch [paths...]          # re-run on change
 gauge report                    # reprint the last run
 ```
+
+Cases run with bounded concurrency (`-c`, default 5). `--cache` stores provider
+responses under `.gauge/cache` and serves identical `(model, prompt)` calls from
+disk — big speedup on re-runs, and it makes runs deterministic.
 
 `tty` (default) · `json` (dashboards) · `junit` (CI). Exit code is non-zero if
 any eval fails. `--filter` keeps only specs whose path matches the substring.
@@ -118,12 +122,38 @@ filter: ""
 
 A `.env` file in the working dir is loaded automatically (API keys, `GAUGE_JUDGE`).
 
+## Custom providers (plugin API)
+
+```ts
+import { registerProvider } from "gauge-eval";
+
+registerProvider("myllm", () => ({
+  vendor: "myllm",
+  async complete({ model, prompt }) {
+    return { output: await callMyModel(model, prompt), latencyMs: 0 };
+  },
+}));
+```
+
+Then reference it in a spec: `provider: myllm/some-model`.
+
+## Config reference
+
+```yaml
+paths: [evals]
+reporter: tty          # tty | json | junit
+judge: openai/gpt-4o-mini
+filter: ""
+concurrency: 5
+cache: false
+```
+
 ## Status
 
-Beta (`0.4.0`). Working: OpenAI/Anthropic/exec providers; equals/contains/regex/llm-judge/llm-rate
-scorers; numeric scores; tty/json/junit reporters; matrix cases; watch; config file;
-regression baselines; `report`. Roadmap to 1.0: stable plugin API for custom
-providers/scorers, concurrency + rate-limit/retry, response caching, docs site.
+Stable (`1.0.0`). OpenAI/Anthropic/exec providers + custom-provider plugin API;
+equals/contains/regex/llm-judge/llm-rate scorers; numeric scores; tty/json/junit
+reporters; matrix cases; watch; config file; regression baselines; `report`;
+bounded concurrency; automatic retry on transient API errors; response caching.
 
 ## Development
 

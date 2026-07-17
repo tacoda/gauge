@@ -38,6 +38,8 @@ switch (cmd) {
         "  -r, --reporter <tty|json|junit>",
         "  -f, --filter <substring>",
         "  -u, --update-baseline   save this run as the regression baseline",
+        "  -c, --concurrency <n>   max cases in parallel (default 5)",
+        "      --cache / --no-cache  cache provider responses on disk",
         "  -v, --version",
       ].join("\n"),
     );

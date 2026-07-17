@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import type { ResolvedProvider, Resolver } from "../providers/index.ts";
-import { runSpec } from "./runner.ts";
+import { runAll, runSpec } from "./runner.ts";
 import type { Spec } from "./spec.ts";
 
 function fakeResolver(output: string): Resolver {
@@ -63,6 +63,33 @@ test("matrix: expands cases, merging base vars and appending base asserts", asyn
   expect(results[0]?.scores.length).toBe(2); // base + case assert
   expect(results[1]?.name).toBe("bob");
   expect(results[1]?.scores.length).toBe(1); // only base assert
+});
+
+test("runAll preserves order and bounds concurrency", async () => {
+  let inFlight = 0;
+  let peak = 0;
+  const resolve: Resolver = () => ({
+    model: "m",
+    provider: {
+      vendor: "fake",
+      complete: async ({ prompt }) => {
+        inFlight++;
+        peak = Math.max(peak, inFlight);
+        await new Promise((r) => setTimeout(r, 5));
+        inFlight--;
+        return { output: prompt, latencyMs: 1 };
+      },
+    },
+  });
+  const specs: Spec[] = Array.from({ length: 6 }, (_, i) => ({
+    path: `s${i}.eval.md`,
+    prompt: `p${i}`,
+    config: { provider: "fake/fake", vars: {}, assert: [{ contains: `p${i}` }] },
+  }));
+  const results = await runAll(specs, { resolve, concurrency: 2 });
+  expect(results.map((r) => r.output)).toEqual(specs.map((_, i) => `p${i}`));
+  expect(peak).toBeLessThanOrEqual(2);
+  expect(results.every((r) => r.pass)).toBe(true);
 });
 
 test("llm-judge routes to the judge provider and reads its verdict", async () => {
