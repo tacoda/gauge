@@ -147,8 +147,15 @@ Cases run with bounded concurrency (`-c`, default 5). `--cache` stores provider
 responses under `.gauge/cache` and serves identical `(model, prompt)` calls from
 disk — big speedup on re-runs, and it makes runs deterministic.
 
-`tty` (default) · `json` (dashboards) · `junit` (CI). Exit code is non-zero if
-any eval fails. `--filter` keeps only specs whose path matches the substring.
+`tty` (default) · `json` (dashboards) · `junit` (CI) · `html` (a single
+self-contained page). Exit code is non-zero if any eval fails. `--filter` keeps
+only specs whose path matches the substring.
+
+`json`, `junit`, and `html` write to stdout — redirect to a file:
+
+```bash
+gauge run -r html > report.html      # open in any browser; no external assets
+```
 
 ## Regression baselines
 
@@ -212,7 +219,7 @@ assert:
 
 ```yaml
 paths: [evals]
-reporter: tty          # tty | json | junit
+reporter: tty          # tty | json | junit | html
 judge: openai/gpt-4o-mini
 filter: ""
 concurrency: 5

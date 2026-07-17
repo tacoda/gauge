@@ -7,7 +7,7 @@ const ConfigSchema = z
   .object({
     /** Default discovery roots when no paths are passed on the CLI. */
     paths: z.array(z.string()).optional(),
-    reporter: z.enum(["tty", "json", "junit"]).optional(),
+    reporter: z.enum(["tty", "json", "junit", "html"]).optional(),
     /** Provider spec for llm-judge, e.g. "openai/gpt-4o-mini". */
     judge: z.string().optional(),
     /** Default substring filter on spec path / case name. */

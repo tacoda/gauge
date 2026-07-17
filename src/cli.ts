@@ -40,7 +40,7 @@ switch (cmd) {
         "  report        reprint the last run",
         "",
         "Options:",
-        "  -r, --reporter <tty|json|junit>",
+        "  -r, --reporter <tty|json|junit|html>   (html/json/junit: redirect to a file)",
         "  -f, --filter <substring>",
         "  -u, --update-baseline   save this run as the regression baseline",
         "  -c, --concurrency <n>   max cases in parallel (default 5)",

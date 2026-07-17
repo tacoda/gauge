@@ -4,6 +4,7 @@ import { parseSpec } from "../core/parse.ts";
 import { type CaseResult, runAll } from "../core/runner.ts";
 import type { Spec } from "../core/spec.ts";
 import { annotateRegressions, loadBaseline, saveBaseline, saveLastRun } from "../core/store.ts";
+import { reportHtml } from "../reporters/html.ts";
 import { reportJson } from "../reporters/json.ts";
 import { reportJunit } from "../reporters/junit.ts";
 import { reportTty } from "../reporters/tty.ts";
@@ -26,6 +27,7 @@ const REPORTERS: Record<string, Reporter> = {
   tty: ttyReporter,
   json: (r) => reportJson(r),
   junit: (r) => reportJunit(r),
+  html: (r, cwd) => reportHtml(r, cwd),
 };
 
 /** `gauge run [paths...] [--reporter tty|json|junit] [--filter substr]`. Returns an exit code. */

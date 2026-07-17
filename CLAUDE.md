@@ -41,7 +41,7 @@ Pipeline: **discover → parse → run → score → report**, with an optional 
 
 ### CLI & entry
 
-[src/cli.ts](src/cli.ts) is a hand-rolled command switch (`run`/`watch`/`report`/`init`). [src/cli/run.ts](src/cli/run.ts) `runOnce()` is the shared discover→run→report pass (also used by `watch`). Reporters ([src/reporters/](src/reporters)) return a boolean pass/fail that becomes the process exit code (non-zero if any eval fails) — this is the CI gate. [src/index.ts](src/index.ts) is the public library API; keep its exports in sync when adding public surface.
+[src/cli.ts](src/cli.ts) is a hand-rolled command switch (`run`/`watch`/`report`/`init`). [src/cli/run.ts](src/cli/run.ts) `runOnce()` is the shared discover→run→report pass (also used by `watch`). Reporters ([src/reporters/](src/reporters)) return a boolean pass/fail that becomes the process exit code (non-zero if any eval fails) — this is the CI gate. `tty`/`json`/`junit`/`html` all print to stdout; `html` is a single self-contained page (inline CSS, no external assets, output escaped). Adding a reporter = one function `(results, cwd) => boolean` + an entry in the `REPORTERS` map ([run.ts](src/cli/run.ts)) and the config enum ([config.ts](src/config.ts)). [src/index.ts](src/index.ts) is the public library API; keep its exports in sync when adding public surface.
 
 ## Conventions
 
