@@ -166,7 +166,7 @@
     <div class="brand">
       <span class="logo">🎯</span>
       <h1>gauge</h1>
-      <span class="ver">v1.0</span>
+      <span class="ver">v1.1</span>
     </div>
     <p class="tagline">A test framework for LLM prompts.</p>
     <nav class="toc" id="toc">
@@ -181,7 +181,7 @@
       <a href="#cli"><span class="dot"></span>CLI &amp; reporters</a>
       <a href="#baselines"><span class="dot"></span>Regression baselines</a>
       <a href="#config"><span class="dot"></span>Config &amp; caching</a>
-      <a href="#plugins"><span class="dot"></span>Custom providers</a>
+      <a href="#plugins"><span class="dot"></span>Custom providers &amp; scorers</a>
       <span class="group">More</span>
       <a href="#harness"><span class="dot"></span>Testing a harness</a>
       <a href="https://www.npmjs.com/package/gauge-eval" target="_blank"><span class="dot"></span>npm ↗</a>
@@ -229,10 +229,10 @@
       <div class="grid">
         <div class="card"><h4><span class="ic b">📝</span>Specs, not scripts</h4><p>Evals are Markdown files with YAML frontmatter. The prompt is the body. No glue code, no framework lock-in.</p></div>
         <div class="card"><h4><span class="ic g">🌐</span>Language-agnostic</h4><p>The <code>exec</code> provider shells out to any harness — Python, Go, Rust — over stdin/stdout.</p></div>
-        <div class="card"><h4><span class="ic b">⚖️</span>Real scoring</h4><p>Exact match to LLM-as-judge to 0–1 rated thresholds. Binary gates for CI, scores for drift.</p></div>
+        <div class="card"><h4><span class="ic b">⚖️</span>Real scoring</h4><p>Exact match, regex, JSON-schema, embedding similarity, LLM-as-judge, 0–1 rated thresholds.</p></div>
         <div class="card"><h4><span class="ic r">📉</span>Regression baselines</h4><p>Snapshot a passing run. Later runs flag anything that regressed — and fail the build.</p></div>
         <div class="card"><h4><span class="ic g">⚡</span>Fast &amp; cheap</h4><p>Bounded concurrency, automatic retries, opt-in response caching.</p></div>
-        <div class="card"><h4><span class="ic b">🔌</span>Extensible</h4><p>Register custom providers with one function. Use it as a CLI or a library.</p></div>
+        <div class="card"><h4><span class="ic b">🔌</span>Extensible</h4><p>OpenAI, Anthropic, Gemini, Ollama, Azure built in. Register custom providers and scorers with one function.</p></div>
       </div>
     </section>
 
@@ -312,8 +312,12 @@ Explain {{topic}} to a 10-year-old in two sentences.</pre>
         <tr><th>Provider</th><th>Spec</th><th>Notes</th></tr>
         <tr><td><span class="chip blue">openai</span></td><td><code>openai/gpt-4o-mini</code></td><td>Reads <code>OPENAI_API_KEY</code></td></tr>
         <tr><td><span class="chip blue">anthropic</span></td><td><code>anthropic/claude-opus-4-8</code></td><td>Reads <code>ANTHROPIC_API_KEY</code></td></tr>
+        <tr><td><span class="chip blue">google</span></td><td><code>google/gemini-1.5-flash</code></td><td>Reads <code>GEMINI_API_KEY</code></td></tr>
+        <tr><td><span class="chip green">ollama</span></td><td><code>ollama/llama3</code></td><td>Local, no key · <code>OLLAMA_HOST</code></td></tr>
+        <tr><td><span class="chip blue">azure</span></td><td><code>azure/my-deployment</code></td><td><code>AZURE_OPENAI_ENDPOINT</code> + <code>_API_KEY</code></td></tr>
         <tr><td><span class="chip green">exec</span></td><td>object form ↓</td><td>Shell out to any harness</td></tr>
       </table>
+      <div class="note">Native providers report token usage, and gauge estimates per-run <b>cost</b> from a built-in price table — shown in the tty and JSON reporters and in <code class="inline">gauge report</code>. Override prices with the <code class="inline">GAUGE_PRICING</code> env var.</div>
 
       <h3>The exec provider — test any harness, any language</h3>
       <p>This is the escape hatch that makes gauge work for tooling built on top of harnesses. The rendered prompt is written to the command's <b>stdin</b>; its <b>stdout</b> becomes the output. Your harness stays in whatever language it's written in.</p>
@@ -342,6 +346,8 @@ Find me flights to Lisbon under $600.</pre>
         <tr><td><code>regex: "/x/i"</code></td><td>output matches — bare pattern or <code>/pattern/flags</code></td></tr>
         <tr><td><code>llm-judge: "rubric"</code></td><td>a judge model grades the output PASS against the rubric</td></tr>
         <tr><td><code>llm-rate: { rubric, min }</code></td><td>a judge rates the output 0–1; passes at or above <code>min</code></td></tr>
+        <tr><td><code>json-schema: {…}</code></td><td>output parses as JSON and validates against the schema</td></tr>
+        <tr><td><code>similarity: { reference, min }</code></td><td>embedding cosine of output vs <code>reference</code> ≥ <code>min</code></td></tr>
       </table>
 
       <h3>Deterministic checks</h3>
@@ -363,6 +369,19 @@ Find me flights to Lisbon under $600.</pre>
         <span class="chip blue">judge: openai/gpt-4o-mini</span>
       </div>
       <div class="note">The judge model defaults to <code class="inline">openai/gpt-4o-mini</code>. Override it with the <code class="inline">GAUGE_JUDGE</code> env var or the <code class="inline">judge</code> config key. Every case also gets a numeric <code class="inline">score</code> — the mean of its assertion scores.</div>
+
+      <h3>Structured output &amp; similarity</h3>
+      <p>For agents that emit JSON — tool calls, structured plans — validate the shape with <code class="inline">json-schema</code>. For fuzzy text targets, <code class="inline">similarity</code> scores embedding cosine against a reference.</p>
+<pre><span class="k">assert:</span>
+  - <span class="k">json-schema:</span>
+      <span class="k">type:</span> <span class="s">object</span>
+      <span class="k">required:</span> [<span class="s">tool</span>, <span class="s">args</span>]
+      <span class="k">properties:</span>
+        <span class="k">tool:</span> { <span class="k">enum:</span> [<span class="s">web_search</span>, <span class="s">calculator</span>] }
+  - <span class="k">similarity:</span>
+      <span class="k">reference:</span> <span class="s">"The capital of France is Paris."</span>
+      <span class="k">min:</span> <span class="s">0.8</span></pre>
+      <div class="note"><code class="inline">similarity</code> uses OpenAI embeddings (<code class="inline">text-embedding-3-small</code> by default; set <code class="inline">GAUGE_EMBED_MODEL</code>). Need a different check entirely? Register your own — see <a href="#plugins">Custom providers &amp; scorers</a>.</div>
 
       <div class="pager"><a href="#providers">← Providers</a><a href="#matrix">Matrix cases →</a></div>
     </section>
@@ -401,10 +420,11 @@ Classify the request into one category slug: {{input}}</pre>
     <!-- CLI -->
     <section class="route" id="cli">
       <h2>CLI &amp; reporters</h2>
-      <p class="lead">Three commands, a handful of flags, exit codes that mean something.</p>
-<pre><span class="prompt">$</span> gauge run [paths...] <span class="p">[-r tty|json|junit] [-f &lt;substr&gt;] [-u] [-c &lt;n&gt;] [--cache]</span>
+      <p class="lead">A few commands, a handful of flags, exit codes that mean something.</p>
+<pre><span class="prompt">$</span> gauge init                    <span class="c"># scaffold gauge.config.yaml + example eval</span>
+<span class="prompt">$</span> gauge run [paths...] <span class="p">[-r tty|json|junit] [-f &lt;substr&gt;] [-u] [-c &lt;n&gt;] [--cache]</span>
 <span class="prompt">$</span> gauge watch [paths...]        <span class="c"># re-run on change</span>
-<span class="prompt">$</span> gauge report                  <span class="c"># reprint the last run</span></pre>
+<span class="prompt">$</span> gauge report                  <span class="c"># reprint last run — with cost + baseline diffs</span></pre>
       <table>
         <tr><th>Flag</th><th>Effect</th></tr>
         <tr><td><code>-r, --reporter</code></td><td><span class="chip blue">tty</span> (default) · <code>json</code> · <code>junit</code></td></tr>
@@ -472,8 +492,9 @@ Classify the request into one category slug: {{input}}</pre>
 
     <!-- PLUGINS -->
     <section class="route" id="plugins">
-      <h2>Custom providers</h2>
-      <p class="lead">Use gauge as a library and register your own vendor with one function.</p>
+      <h2>Custom providers &amp; scorers</h2>
+      <p class="lead">Use gauge as a library and register your own vendor or assertion with one function.</p>
+      <h3>A custom provider</h3>
 <pre><span class="k">import</span> { registerProvider } <span class="k">from</span> <span class="s">"gauge-eval"</span>;
 
 registerProvider(<span class="s">"myllm"</span>, () => ({
@@ -485,6 +506,22 @@ registerProvider(<span class="s">"myllm"</span>, () => ({
 }));</pre>
       <p>Then reference it in any spec:</p>
 <pre><span class="k">provider:</span> <span class="s">myllm/some-model</span></pre>
+
+      <h3>A custom scorer</h3>
+      <p>The key you register becomes the assertion name. Return <code class="inline">{ pass, score, label, message }</code>.</p>
+<pre><span class="k">import</span> { registerScorer } <span class="k">from</span> <span class="s">"gauge-eval"</span>;
+
+registerScorer(<span class="s">"word-count-under"</span>, (value, output) => {
+  <span class="k">const</span> limit = value <span class="k">as</span> number;
+  <span class="k">const</span> n = output.split(/\s+/).filter(Boolean).length;
+  <span class="k">return</span> {
+    pass: n &lt;= limit, score: n &lt;= limit ? 1 : 0,
+    label: <span class="s">`word-count-under ${limit}`</span>,
+    message: n &lt;= limit ? <span class="s">""</span> : <span class="s">`${n} words`</span>,
+  };
+});</pre>
+<pre><span class="k">assert:</span>
+  - <span class="k">word-count-under:</span> <span class="s">50</span></pre>
       <p>The library also exports the runner, parser, scorers, and store, so you can build gauge into a larger workflow:</p>
 <pre><span class="k">import</span> { parseSpec, runAll } <span class="k">from</span> <span class="s">"gauge-eval"</span>;
 
